@@ -1,12 +1,12 @@
-import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 import {
   LayoutDashboard,
-  Users,
   Package,
   ShoppingCart,
   Warehouse,
   Truck,
+  ShoppingBag,
   Store,
   Wallet,
   CreditCard,
@@ -15,22 +15,20 @@ import {
   FileText,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
+  Tag,
+  X
 } from 'lucide-react';
 
-const Sidebar = () => {
-  const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+const Sidebar = ({ isOpen, onToggle }) => {
+  const { theme } = useTheme();
 
   const menuItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-500' },
-    { path: '/empleados', icon: Users, label: 'Empleados', color: 'text-purple-500' },
-    { path: '/categorias', icon: Package, label: 'Categorías', color: 'text-green-500' },
+    { path: '/categorias', icon: Tag, label: 'Categorías', color: 'text-green-500' },
     { path: '/productos', icon: Package, label: 'Productos', color: 'text-orange-500' },
     { path: '/inventario', icon: Warehouse, label: 'Inventario', color: 'text-cyan-500' },
     { path: '/proveedores', icon: Truck, label: 'Proveedores', color: 'text-indigo-500' },
-    { path: '/compras', icon: ShoppingCart, label: 'Compras', color: 'text-pink-500' },
+    { path: '/compras', icon: ShoppingBag, label: 'Compras', color: 'text-pink-500' },
     { path: '/pos', icon: Store, label: 'Punto de Venta', color: 'text-emerald-500' },
     { path: '/caja', icon: Wallet, label: 'Caja', color: 'text-yellow-500' },
     { path: '/creditos', icon: CreditCard, label: 'Créditos', color: 'text-red-500' },
@@ -42,82 +40,97 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside
-      className={`
-        bg-white dark:bg-dark-card
-        border-r border-gray-200 dark:border-dark-border
-        transition-all duration-300 ease-in-out
-        flex flex-col
-        ${collapsed ? 'w-20' : 'w-64'}
-      `}
-    >
-      {/* Header del sidebar */}
-      <div className="p-6 border-b border-gray-200 dark:border-dark-border flex items-center justify-between">
-        {!collapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">M</span>
+    <>
+      {/* Backdrop/Overlay para móvil */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 h-full
+          bg-white dark:bg-dark-card
+          border-r border-gray-200 dark:border-dark-border
+          transition-all duration-300 ease-in-out
+          z-50
+          lg:w-64
+          ${isOpen ? 'w-64' : 'w-0'}
+          overflow-hidden
+        `}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-dark-border">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                SM
+              </div>
+              <div className="overflow-hidden">
+                <h1 className="font-bold text-gray-800 dark:text-white whitespace-nowrap">
+                  Mapache
+                </h1>
+              </div>
             </div>
-            <span className="text-lg font-bold text-gray-800 dark:text-white">
-              Mapache
-            </span>
-          </div>
-        )}
-        
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
-        >
-          {collapsed ? (
-            <ChevronRight size={20} className="text-gray-600 dark:text-gray-400" />
-          ) : (
-            <ChevronLeft size={20} className="text-gray-600 dark:text-gray-400" />
-          )}
-        </button>
-      </div>
 
-      {/* Menú */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`
-                flex items-center space-x-3 px-4 py-3 rounded-lg
-                transition-all duration-200
-                ${isActive
-                  ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover'
-                }
-                ${collapsed ? 'justify-center' : ''}
-              `}
-              title={collapsed ? item.label : ''}
+            {/* Botón cerrar en móvil */}
+            <button
+              onClick={onToggle}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
             >
-              <Icon
-                size={20}
-                className={isActive ? item.color : ''}
-              />
-              {!collapsed && (
-                <span className="text-sm">{item.label}</span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Footer del sidebar */}
-      <div className="p-4 border-t border-gray-200 dark:border-dark-border">
-        {!collapsed && (
-          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            v1.0.0 - Sprint 1
+              <X size={20} className="text-gray-600 dark:text-gray-400" />
+            </button>
           </div>
-        )}
-      </div>
-    </aside>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto py-4 px-2">
+            <div className="space-y-1">
+              {menuItems.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => {
+                    // Cerrar sidebar en móvil al hacer clic
+                    if (window.innerWidth < 1024) {
+                      onToggle();
+                    }
+                  }}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${
+                      isActive
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon 
+                        size={20} 
+                        className={`flex-shrink-0 ${isActive ? 'text-white' : item.color}`}
+                      />
+                      <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                        {item.label}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-200 dark:border-dark-border">
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              v1.0.0 - Sprint 4
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };
 

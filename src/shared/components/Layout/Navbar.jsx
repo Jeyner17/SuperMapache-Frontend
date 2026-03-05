@@ -1,115 +1,82 @@
-import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
-import { Bell, User, LogOut, Moon, Sun, Settings } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut } from 'lucide-react';
 
-const Navbar = () => {
+const Navbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const handleLogout = () => {
-    if (window.confirm('¿Estás seguro de cerrar sesión?')) {
-      logout();
-    }
-  };
 
   return (
-    <nav className="bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border shadow-sm">
-      <div className="px-6 py-4 flex justify-between items-center">
-        {/* Logo y título */}
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">SM</span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-              SuperMercado Mapache
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Sistema de Gestión
-            </p>
+    <header className="h-16 bg-white dark:bg-dark-card border-b border-gray-200 dark:border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30">
+      <div className="h-full px-4 flex items-center justify-between">
+        {/* Left side */}
+        <div className="flex items-center gap-4">
+          {/* Menu button - SOLO EN MÓVIL */}
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
+          >
+            <Menu size={24} className="text-gray-600 dark:text-gray-400" />
+          </button>
+
+          {/* Logo y título - Solo en móvil */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+              SM
+            </div>
+            {/* Ocultar texto en móvil pequeño, mostrar en tablet */}
+            <div className="hidden sm:block">
+              <h1 className="font-bold text-gray-800 dark:text-white text-lg">
+                SuperMercado Mapache
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Sistema de Gestión
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Botón de tema */}
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
-            title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
           >
-            {theme === 'light' ? (
-              <Moon size={20} className="text-gray-600" />
+            {theme === 'dark' ? (
+              <Sun size={20} className="text-gray-600 dark:text-gray-400" />
             ) : (
-              <Sun size={20} className="text-yellow-400" />
+              <Moon size={20} className="text-gray-600 dark:text-gray-400" />
             )}
           </button>
 
-          {/* Notificaciones */}
-          <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors">
-            <Bell size={20} className="text-gray-600 dark:text-gray-400" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-          </button>
+          {/* User menu */}
+          <div className="flex items-center gap-3 ml-2 pl-2 border-l border-gray-200 dark:border-dark-border">
+            <div className="hidden sm:block text-right">
+              <p className="text-sm font-medium text-gray-800 dark:text-white">
+                {user?.nombre}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {user?.rol?.nombre}
+              </p>
+            </div>
 
-          {/* Usuario */}
-          <div className="relative">
+            <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+              {user?.nombre?.charAt(0).toUpperCase()}
+            </div>
+
             <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-dark-hover rounded-lg transition-colors"
+              onClick={logout}
+              className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              title="Cerrar sesión"
             >
-              <div className="w-9 h-9 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-sm">
-                  {user?.nombre?.charAt(0) || 'U'}
-                </span>
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                  {user?.nombre || 'Usuario'}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                  {user?.rol || 'Rol'}
-                </p>
-              </div>
+              <LogOut size={20} className="text-red-600" />
             </button>
-
-            {/* Menú desplegable */}
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-dark-card rounded-lg shadow-xl border border-gray-200 dark:border-dark-border py-2 z-50 animate-fade-in">
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-border">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {user?.nombre}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {user?.email}
-                  </p>
-                </div>
-
-                <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover flex items-center space-x-2">
-                  <User size={16} />
-                  <span>Mi Perfil</span>
-                </button>
-
-                <button className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-hover flex items-center space-x-2">
-                  <Settings size={16} />
-                  <span>Configuración</span>
-                </button>
-
-                <hr className="my-2 border-gray-200 dark:border-dark-border" />
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
-                >
-                  <LogOut size={16} />
-                  <span>Cerrar Sesión</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

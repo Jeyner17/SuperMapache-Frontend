@@ -1,23 +1,45 @@
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 
 const MainLayout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // En desktop (>= 1024px), SIEMPRE abierto
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        // En móvil, cerrado por defecto
+        setSidebarOpen(false);
+      }
+    };
+
+    // Ejecutar al montar
+    handleResize();
+
+    // Escuchar cambios de tamaño
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleToggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar />
-
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Navbar */}
-        <Navbar />
-
-        {/* Contenido */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-bg">
+      <Sidebar isOpen={sidebarOpen} onToggle={handleToggleSidebar} />
+      <Navbar onToggleSidebar={handleToggleSidebar} />
+      
+      <main className="pt-16 lg:ml-64">
+        <div className="p-6">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
