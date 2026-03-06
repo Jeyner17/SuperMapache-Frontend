@@ -1,9 +1,9 @@
 import { useAuth } from '../../../shared/hooks/useAuth';
 import Card from '../../../shared/components/UI/Card';
-import { 
-  TrendingUp, 
-  Package, 
-  AlertTriangle, 
+import {
+  TrendingUp,
+  Package,
+  AlertTriangle,
   CheckCircle,
   Users,
   DollarSign,
@@ -50,35 +50,44 @@ const Dashboard = () => {
     },
   ];
 
-const sprints = [
-  {
-    number: 1,
-    title: 'Sistema de Login',
-    description: 'Autenticación y autorización básica',
-    status: 'completado',
-    icon: CheckCircle,
-    color: 'border-green-500',
-    bgColor: 'bg-green-50 dark:bg-green-900/20',
-  },
-  {
-    number: 2,
-    title: 'CRUD de Productos',
-    description: 'Crear, editar, eliminar y listar productos',
-    status: 'completado',
-    icon: CheckCircle,
-    color: 'border-green-500',
-    bgColor: 'bg-green-50 dark:bg-green-900/20',
-  },
-  {
-    number: 3,
-    title: 'Sistema de Inventario',
-    description: 'Control de stock y alertas',
-    status: 'completado', 
-    icon: CheckCircle,
-    color: 'border-green-500',
-    bgColor: 'bg-green-50 dark:bg-green-900/20',
-  },
-  {
+  const sprints = [
+    {
+      number: 1,
+      title: 'Sistema de Login',
+      description: 'Autenticación y autorización básica',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
+      number: 2,
+      title: 'CRUD de Productos',
+      description: 'Crear, editar, eliminar y listar productos',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
+      number: 3,
+      title: 'Sistema de Inventario',
+      description: 'Control de stock y alertas',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
+      number: 4,
+      title: 'Escaneo de Códigos',
+      description: 'Lectura de códigos de barras',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
       number: 5,
       title: 'Proveedores y Compras',
       description: 'Órdenes de compra y recepción',
@@ -87,7 +96,16 @@ const sprints = [
       color: 'border-green-500',
       bgColor: 'bg-green-50 dark:bg-green-900/20',
     },
-];
+    {
+      number: 6,
+      title: 'Punto de Venta (POS)',
+      description: 'Sistema de ventas en tiempo real',
+      status: 'pendiente',
+      icon: ShoppingCart,
+      color: 'border-gray-300 dark:border-gray-600',
+      bgColor: 'bg-gray-50 dark:bg-gray-800/50',
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -112,13 +130,12 @@ const sprints = [
                   <Icon className="w-6 h-6 text-white" />
                 </div>
                 <span
-                  className={`text-sm font-medium ${
-                    stat.changeType === 'positive'
-                      ? 'text-green-600 dark:text-green-400'
-                      : stat.changeType === 'warning'
+                  className={`text-sm font-medium ${stat.changeType === 'positive'
+                    ? 'text-green-600 dark:text-green-400'
+                    : stat.changeType === 'warning'
                       ? 'text-orange-600 dark:text-orange-400'
                       : 'text-red-600 dark:text-red-400'
-                  }`}
+                    }`}
                 >
                   {stat.change}
                 </span>
@@ -195,19 +212,18 @@ const sprints = [
                     </span>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      sprint.status === 'completado'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : sprint.status === 'en-desarrollo'
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${sprint.status === 'completado'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : sprint.status === 'en-desarrollo'
                         ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                         : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                    }`}
+                      }`}
                   >
                     {sprint.status === 'completado'
                       ? '✓ Completado'
                       : sprint.status === 'en-desarrollo'
-                      ? '🔨 En Desarrollo'
-                      : '⏳ Pendiente'}
+                        ? '🔨 En Desarrollo'
+                        : '⏳ Pendiente'}
                   </span>
                 </div>
                 <h3 className="font-semibold text-gray-800 dark:text-white mb-2">

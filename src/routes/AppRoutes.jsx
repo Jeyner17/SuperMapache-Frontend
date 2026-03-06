@@ -12,6 +12,8 @@ import Productos from '../modules/productos/pages/Productos';
 import Inventario from '../modules/inventario/pages/Inventario';
 import Proveedores from '../modules/proveedores/pages/Proveedores';
 import Compras from '../modules/compras/pages/Compras';
+import VerificacionProductos from '../modules/escaneo/pages/VerificacionProductos';
+
 
 
 // Components
@@ -50,6 +52,9 @@ const AppRoutes = () => {
           
           {/* Sprint 3 - Inventario */}
           <Route path="inventario" element={<Inventario />} />
+
+          {/* Sprint 4 - Escaneo de Códigos de Barras */}
+          <Route path="escaneo" element={<VerificacionProductos />} />
 
            {/* Sprint 5 - Proveedores y Compras */}
           <Route path="proveedores" element={<Proveedores />} />
