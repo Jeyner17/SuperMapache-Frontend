@@ -61,6 +61,15 @@ const Dashboard = () => {
       bgColor: 'bg-green-50 dark:bg-green-900/20',
     },
     {
+      number: '1.5',
+      title: 'Configuración',
+      description: 'Parámetros globales del sistema',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
+    },
+    {
       number: 2,
       title: 'CRUD de Productos',
       description: 'Crear, editar, eliminar y listar productos',
@@ -100,10 +109,10 @@ const Dashboard = () => {
       number: 6,
       title: 'Punto de Venta (POS)',
       description: 'Sistema de ventas en tiempo real',
-      status: 'pendiente',
-      icon: ShoppingCart,
-      color: 'border-gray-300 dark:border-gray-600',
-      bgColor: 'bg-gray-50 dark:bg-gray-800/50',
+      status: 'completado',
+      icon: CheckCircle,
+      color: 'border-green-500',
+      bgColor: 'bg-green-50 dark:bg-green-900/20',
     },
   ];
 

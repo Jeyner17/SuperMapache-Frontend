@@ -1,24 +1,13 @@
 /**
  * Formatear moneda
  */
-export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
-};
-
-/**
- * Formatear fecha DD/MM/YYYY
- */
-export const formatDate = (date) => {
-  if (!date) return '';
-  return new Intl.DateTimeFormat('es-EC', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(date));
+export const formatCurrency = (value, simbolo = '$') => {
+  if (value === null || value === undefined) return `${simbolo}0.00`;
+  
+  const numero = parseFloat(value);
+  if (isNaN(numero)) return `${simbolo}0.00`;
+  
+  return `${simbolo}${numero.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 };
 
 /**
@@ -26,20 +15,56 @@ export const formatDate = (date) => {
  */
 export const formatDateTime = (date) => {
   if (!date) return '';
-  return new Intl.DateTimeFormat('es-EC', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date));
+  
+  const d = new Date(date);
+  
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const anio = d.getFullYear();
+  
+  const horas = String(d.getHours()).padStart(2, '0');
+  const minutos = String(d.getMinutes()).padStart(2, '0');
+  
+  return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
 };
 
 /**
- * Formatear número con separadores de miles
+ * Formatear solo fecha
  */
-export const formatNumber = (number) => {
-  return new Intl.NumberFormat('es-EC').format(number);
+export const formatDate = (date) => {
+  if (!date) return '';
+  
+  const d = new Date(date);
+  
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const anio = d.getFullYear();
+  
+  return `${dia}/${mes}/${anio}`;
+};
+
+/**
+ * Formatear número
+ */
+export const formatNumber = (value, decimales = 2) => {
+  if (value === null || value === undefined) return '0';
+  
+  const numero = parseFloat(value);
+  if (isNaN(numero)) return '0';
+  
+  return numero.toFixed(decimales).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+/**
+ * Formatear porcentaje
+ */
+export const formatPercentage = (value) => {
+  if (value === null || value === undefined) return '0%';
+  
+  const numero = parseFloat(value);
+  if (isNaN(numero)) return '0%';
+  
+  return `${numero.toFixed(2)}%`;
 };
 
 /**

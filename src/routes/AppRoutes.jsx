@@ -13,6 +13,8 @@ import Inventario from '../modules/inventario/pages/Inventario';
 import Proveedores from '../modules/proveedores/pages/Proveedores';
 import Compras from '../modules/compras/pages/Compras';
 import VerificacionProductos from '../modules/escaneo/pages/VerificacionProductos';
+import POS from '../modules/ventas/pages/POS';
+import Configuracion from '../modules/configuracion/pages/Configuracion';
 
 
 
@@ -45,6 +47,8 @@ const AppRoutes = () => {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          {/* Sprint 1 - Configuración */}
+          <Route path="configuracion" element={<Configuracion />} />
 
           {/* Sprint 2 - Categorías y Productos */}
           <Route path="categorias" element={<Categorias />} />
@@ -59,18 +63,18 @@ const AppRoutes = () => {
            {/* Sprint 5 - Proveedores y Compras */}
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="compras" element={<Compras />} />
+
+          {/* Sprint 6 - POS */}
+          <Route path="pos" element={<POS />} />
           
           {/* Placeholder para otros módulos */}
           <Route path="empleados" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Empleados (Sprint 2)</div>} />
-          <Route path="pos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo POS (Sprint 6)</div>} />
           <Route path="caja" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Caja (Sprint 7)</div>} />
           <Route path="creditos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Créditos (Sprint 7)</div>} />
           <Route path="gastos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Gastos (Sprint 9)</div>} />
           <Route path="alertas" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Alertas (Sprint 8)</div>} />
           <Route path="auditoria" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Auditoría (Sprint 9)</div>} />
-          <Route path="reportes" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Reportes (Sprint 10)</div>} />
-          <Route path="configuracion" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Configuración (Sprint 1)</div>} />
-          
+          <Route path="reportes" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Reportes (Sprint 10)</div>} />          
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
