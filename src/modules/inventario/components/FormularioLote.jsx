@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import productoService from '../../productos/services/producto.service';
 import Input from '../../../shared/components/UI/Input';
@@ -20,19 +20,26 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
   const [productos, setProductos] = useState([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimer = useRef(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    cargarProductos();
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(searchTimer.current);
   }, [searchTerm]);
+
+  useEffect(() => {
+    cargarProductos();
+  }, [debouncedSearch]);
 
   const cargarProductos = async () => {
     try {
       const response = await productoService.getAll({
-        search: searchTerm,
-        limit: 20,
-        activo: true
+        search: debouncedSearch,
+        limit: 20
       });
       setProductos(response.data.productos);
     } catch (error) {

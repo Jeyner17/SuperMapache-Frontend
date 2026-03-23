@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import productoService from '../services/producto.service';
 import categoriaService from '../../categorias/services/categoria.service';
@@ -28,7 +28,9 @@ const Productos = () => {
   const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
+  const searchTimer = useRef(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedProducto, setSelectedProducto] = useState(null);
@@ -43,9 +45,19 @@ const Productos = () => {
     cargarCategorias();
   }, []);
 
+  // Debounce: espera 300ms tras el último teclazo antes de buscar
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPagination(prev => ({ ...prev, page: 1 }));
+    }, 300);
+    return () => clearTimeout(searchTimer.current);
+  }, [searchTerm]);
+
   useEffect(() => {
     cargarProductos();
-  }, [pagination.page, filtroCategoria, searchTerm]);
+  }, [pagination.page, filtroCategoria, debouncedSearch]);
 
   const cargarCategorias = async () => {
     try {
@@ -63,7 +75,7 @@ const Productos = () => {
         page: pagination.page,
         limit: pagination.limit,
         categoria_id: filtroCategoria,
-        search: searchTerm
+        search: debouncedSearch
       });
       
       setProductos(response.data.productos);
@@ -136,7 +148,7 @@ const Productos = () => {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
-  if (loading && productos.length === 0) {
+  if (loading && productos.length === 0 && !searchTerm && !filtroCategoria) {
     return <Loading message="Cargando productos..." />;
   }
 
