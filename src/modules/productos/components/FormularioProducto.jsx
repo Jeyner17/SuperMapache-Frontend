@@ -101,9 +101,10 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const sanitized = name === 'codigo_barras' ? value.replace(/\D/g, '').slice(0, 13) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : sanitized
     }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -153,8 +154,12 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
     if (parseFloat(formData.precio_venta) < parseFloat(formData.precio_costo)) {
       newErrors.precio_venta = 'El precio de venta debe ser mayor al precio de costo';
     }
-    if (formData.codigo_barras && formData.codigo_barras.length < 8) {
-      newErrors.codigo_barras = 'El código de barras debe tener al menos 8 caracteres';
+    if (formData.codigo_barras) {
+      if (!/^\d+$/.test(formData.codigo_barras)) {
+        newErrors.codigo_barras = 'El código de barras solo puede contener números';
+      } else if (formData.codigo_barras.length < 8 || formData.codigo_barras.length > 13) {
+        newErrors.codigo_barras = 'El código de barras debe tener entre 8 y 13 dígitos';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
