@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import proveedorService from '../services/proveedor.service';
 import Button from '../../../shared/components/UI/Button';
@@ -28,20 +28,28 @@ const Proveedores = () => {
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimer = useRef(null);
   const [filtroTipo, setFiltroTipo] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedProveedor, setSelectedProveedor] = useState(null);
 
   useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(searchTimer.current);
+  }, [searchTerm]);
+
+  useEffect(() => {
     cargarProveedores();
-  }, [searchTerm, filtroTipo]);
+  }, [debouncedSearch, filtroTipo]);
 
   const cargarProveedores = async () => {
     try {
       setLoading(true);
       const response = await proveedorService.getAll({
-        search: searchTerm,
+        search: debouncedSearch,
         tipo_proveedor: filtroTipo
       });
       setProveedores(response.data);
@@ -100,7 +108,7 @@ const Proveedores = () => {
     }
   };
 
-  if (loading && proveedores.length === 0) {
+  if (loading && proveedores.length === 0 && !searchTerm && !filtroTipo) {
     return <Loading message="Cargando proveedores..." />;
   }
 

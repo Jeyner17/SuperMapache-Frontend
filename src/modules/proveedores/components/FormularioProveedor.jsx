@@ -53,11 +53,24 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    let sanitized = value;
+    if (name === 'ruc') {
+      sanitized = value.replace(/\D/g, '').slice(0, 13);
+    } else if (name === 'calificacion') {
+      const num = parseFloat(value);
+      if (value !== '' && !isNaN(num)) {
+        sanitized = Math.min(5, Math.max(0, num)).toString();
+      } else {
+        sanitized = value === '' ? '' : value;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : sanitized
     }));
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -72,12 +85,21 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
       newErrors.razon_social = 'La razón social debe tener al menos 3 caracteres';
     }
 
-    if (formData.ruc && formData.ruc.length !== 13) {
-      newErrors.ruc = 'El RUC debe tener 13 caracteres';
+    if (formData.ruc) {
+      if (!/^\d+$/.test(formData.ruc)) {
+        newErrors.ruc = 'El RUC solo puede contener números';
+      } else if (formData.ruc.length !== 13) {
+        newErrors.ruc = 'El RUC debe tener exactamente 13 dígitos';
+      }
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email inválido';
+    }
+
+    const cal = parseFloat(formData.calificacion);
+    if (isNaN(cal) || cal < 0 || cal > 5) {
+      newErrors.calificacion = 'La calificación debe ser entre 0 y 5';
     }
 
     setErrors(newErrors);
@@ -172,8 +194,13 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
               min="0"
               max="5"
               step="0.1"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+              className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 ${
+                errors.calificacion ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'
+              }`}
             />
+            {errors.calificacion && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.calificacion}</p>
+            )}
           </div>
         </div>
       </div>
