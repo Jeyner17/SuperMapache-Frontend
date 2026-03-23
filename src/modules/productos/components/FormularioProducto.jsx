@@ -1,8 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { ImagePlus, X } from 'lucide-react';
 import Input from '../../../shared/components/UI/Input';
 import Button from '../../../shared/components/UI/Button';
 
+const IMAGE_SIZE = 400;
+const IMAGE_QUALITY = 0.8;
+
+const processImage = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Imagen inválida'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = IMAGE_SIZE;
+        canvas.height = IMAGE_SIZE;
+        const ctx = canvas.getContext('2d');
+        // Fondo blanco para imágenes con transparencia
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, IMAGE_SIZE, IMAGE_SIZE);
+        // Contain fit: escalar manteniendo proporción, centrado
+        const scale = Math.min(IMAGE_SIZE / img.width, IMAGE_SIZE / img.height);
+        const x = (IMAGE_SIZE - img.width * scale) / 2;
+        const y = (IMAGE_SIZE - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        const preview = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return reject(new Error('Error al procesar imagen'));
+            resolve({ blob, preview });
+          },
+          'image/jpeg',
+          IMAGE_QUALITY
+        );
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
 const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel }) => {
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -21,6 +61,10 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [margenGanancia, setMargenGanancia] = useState(0);
+  const [imageBlob, setImageBlob] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [imageRemoved, setImageRemoved] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -39,17 +83,17 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
         unidad_medida: initialData.unidad_medida || 'unidad',
         activo: initialData.activo !== undefined ? initialData.activo : true,
       });
+      setImagePreview(initialData.imagen || '');
+      setImageBlob(null);
+      setImageRemoved(false);
     }
   }, [initialData]);
 
-  // Calcular margen de ganancia automáticamente
   useEffect(() => {
     const costo = parseFloat(formData.precio_costo) || 0;
     const venta = parseFloat(formData.precio_venta) || 0;
-    
     if (costo > 0 && venta > 0) {
-      const margen = ((venta - costo) / costo) * 100;
-      setMargenGanancia(margen.toFixed(2));
+      setMargenGanancia(((venta - costo) / costo * 100).toFixed(2));
     } else {
       setMargenGanancia(0);
     }
@@ -61,68 +105,89 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageLoading(true);
+    try {
+      const { blob, preview } = await processImage(file);
+      setImageBlob(blob);
+      setImagePreview(preview);
+      setImageRemoved(false);
+      setErrors(prev => ({ ...prev, imagen: '' }));
+    } catch {
+      setErrors(prev => ({ ...prev, imagen: 'No se pudo procesar la imagen' }));
+    } finally {
+      setImageLoading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleImageRemove = () => {
+    setImageBlob(null);
+    setImagePreview('');
+    setImageRemoved(true);
   };
 
   const validate = () => {
     const newErrors = {};
-
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'El nombre es requerido';
     } else if (formData.nombre.length < 3) {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres';
     }
-
     if (!formData.categoria_id) {
       newErrors.categoria_id = 'La categoría es requerida';
     }
-
     if (!formData.precio_costo || parseFloat(formData.precio_costo) <= 0) {
       newErrors.precio_costo = 'El precio de costo debe ser mayor a 0';
     }
-
     if (!formData.precio_venta || parseFloat(formData.precio_venta) <= 0) {
       newErrors.precio_venta = 'El precio de venta debe ser mayor a 0';
     }
-
     if (parseFloat(formData.precio_venta) < parseFloat(formData.precio_costo)) {
       newErrors.precio_venta = 'El precio de venta debe ser mayor al precio de costo';
     }
-
     if (formData.codigo_barras && formData.codigo_barras.length < 8) {
       newErrors.codigo_barras = 'El código de barras debe tener al menos 8 caracteres';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!validate()) {
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      // Convertir valores numéricos
-      const dataToSend = {
-        ...formData,
-        precio_costo: parseFloat(formData.precio_costo),
-        precio_venta: parseFloat(formData.precio_venta),
-        stock_minimo: parseInt(formData.stock_minimo),
-        stock_maximo: parseInt(formData.stock_maximo),
-        dias_alerta_caducidad: parseInt(formData.dias_alerta_caducidad),
-      };
+      const data = new FormData();
+      data.append('nombre', formData.nombre);
+      data.append('descripcion', formData.descripcion || '');
+      data.append('categoria_id', formData.categoria_id);
+      data.append('codigo_barras', formData.codigo_barras || '');
+      data.append('sku', formData.sku || '');
+      data.append('precio_costo', parseFloat(formData.precio_costo));
+      data.append('precio_venta', parseFloat(formData.precio_venta));
+      data.append('stock_minimo', parseInt(formData.stock_minimo));
+      data.append('stock_maximo', parseInt(formData.stock_maximo));
+      data.append('requiere_caducidad', formData.requiere_caducidad);
+      data.append('dias_alerta_caducidad', parseInt(formData.dias_alerta_caducidad));
+      data.append('unidad_medida', formData.unidad_medida);
+      data.append('activo', formData.activo);
 
-      await onSubmit(dataToSend);
+      if (imageBlob) {
+        data.append('imagen', imageBlob, 'producto.jpg');
+      } else if (imageRemoved) {
+        data.append('imagen', '');
+      }
+
+      await onSubmit(data);
     } finally {
       setLoading(false);
     }
@@ -188,9 +253,7 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
               ))}
             </select>
             {errors.categoria_id && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                {errors.categoria_id}
-              </p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.categoria_id}</p>
             )}
           </div>
 
@@ -214,6 +277,67 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
               <option value="paquete">Paquete</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* Imagen */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+          Imagen del Producto
+        </h3>
+        <div className="flex items-start gap-4">
+          {/* Preview */}
+          <div className="w-32 h-32 flex-shrink-0 rounded-lg border-2 border-dashed border-gray-300 dark:border-dark-border overflow-hidden bg-gray-50 dark:bg-dark-card flex items-center justify-center">
+            {imagePreview ? (
+              <img
+                src={imagePreview}
+                alt="Vista previa"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <ImagePlus size={32} className="text-gray-400" />
+            )}
+          </div>
+
+          {/* Controles */}
+          {!isViewMode && (
+            <div className="flex flex-col gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                loading={imageLoading}
+                disabled={imageLoading}
+              >
+                <ImagePlus size={16} />
+                {imagePreview ? 'Cambiar imagen' : 'Subir imagen'}
+              </Button>
+              {imagePreview && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={handleImageRemove}
+                >
+                  <X size={16} />
+                  Eliminar
+                </Button>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Se redimensionará a 400×400 px.<br />
+                Formatos: JPG, PNG, WEBP.
+              </p>
+              {errors.imagen && (
+                <p className="text-sm text-red-600 dark:text-red-400">{errors.imagen}</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -283,12 +407,12 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
               Margen de Ganancia
             </label>
             <div className={`
-              w-full rounded-lg border px-4 py-2.5 
+              w-full rounded-lg border px-4 py-2.5
               ${margenGanancia > 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-dark-border'}
             `}>
               <p className={`text-lg font-bold ${
-                margenGanancia > 0 
-                  ? 'text-green-700 dark:text-green-400' 
+                margenGanancia > 0
+                  ? 'text-green-700 dark:text-green-400'
                   : 'text-gray-500 dark:text-gray-400'
               }`}>
                 {margenGanancia}%
@@ -333,7 +457,6 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
           Control de Caducidad
         </h3>
-        
         <div className="space-y-4">
           <div className="flex items-center">
             <input

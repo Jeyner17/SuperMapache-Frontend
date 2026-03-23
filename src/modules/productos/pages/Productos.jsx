@@ -376,11 +376,13 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
       {/* Imagen */}
       <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
         {producto.imagen ? (
-          <img
-            src={producto.imagen}
-            alt={producto.nombre}
-            className="w-full h-full object-cover"
-          />
+          <div className="w-full h-full flex items-center justify-center pt-10">
+            <img
+              src={producto.imagen}
+              alt={producto.nombre}
+              className="w-full h-full object-contain"
+            />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package size={64} className="text-gray-400" />
