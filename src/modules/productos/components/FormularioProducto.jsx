@@ -276,10 +276,16 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
               <option value="unidad">Unidad</option>
               <option value="kg">Kilogramo (kg)</option>
               <option value="g">Gramo (g)</option>
+              <option value="lb">Libra (lb)</option>
+              <option value="oz">Onza (oz)</option>
               <option value="l">Litro (l)</option>
               <option value="ml">Mililitro (ml)</option>
               <option value="caja">Caja</option>
               <option value="paquete">Paquete</option>
+              <option value="docena">Docena</option>
+              <option value="bolsa">Bolsa</option>
+              <option value="lata">Lata</option>
+              <option value="botella">Botella</option>
             </select>
           </div>
         </div>
