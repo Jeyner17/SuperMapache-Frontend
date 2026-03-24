@@ -12,7 +12,6 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
     proveedor_id: '',
     fecha_compra: new Date().toISOString().split('T')[0],
     fecha_entrega_estimada: '',
-    numero_factura: '',
     tipo_pago: 'contado',
     dias_credito: 0,
     descuento: 0,
@@ -27,9 +26,10 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
 
   useEffect(() => {
     if (searchTerm.length >= 2) {
+      const term = searchTerm;
       const timer = setTimeout(() => {
-        buscarProductos();
-      }, 100);
+        buscarProductos(term);
+      }, 300);
 
       return () => clearTimeout(timer);
     } else {
@@ -49,13 +49,12 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
     }
   }, [formData.proveedor_id, formData.tipo_pago, proveedores]);
 
-  const buscarProductos = async () => { 
+  const buscarProductos = async (term) => {
     try {
       const response = await productoService.getAll({
-        search: searchTerm,
+        search: term,
         page: 1,
-        limit: 20,
-        activo: 1
+        limit: 20
       });
 
       let productosEncontrados = [];
@@ -239,14 +238,6 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
             type="date"
             value={formData.fecha_entrega_estimada}
             onChange={handleChange}
-          />
-
-          <Input
-            label="Número de Factura"
-            name="numero_factura"
-            value={formData.numero_factura}
-            onChange={handleChange}
-            placeholder="001-001-0000001"
           />
 
           <div>

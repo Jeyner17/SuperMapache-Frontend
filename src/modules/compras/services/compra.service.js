@@ -88,6 +88,13 @@ class CompraService {
   async registrarPago(id, monto) {
     return await api.post(`/compras/${id}/pagar`, { monto });
   }
+
+  /**
+   * Eliminar compra (solo pendiente)
+   */
+  async delete(id) {
+    return await api.delete(`/compras/${id}`);
+  }
 }
 
 export default new CompraService();

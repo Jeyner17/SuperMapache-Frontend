@@ -12,10 +12,11 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Inicializar productos con las cantidades pedidas
+    if (!compra?.detalles?.length) return;
+
     const productosIniciales = compra.detalles.map(detalle => ({
       detalle_id: detalle.id,
-      producto_nombre: detalle.producto.nombre,
+      producto_nombre: detalle.producto?.nombre || `Producto #${detalle.producto_id}`,
       cantidad_pedida: parseFloat(detalle.cantidad_pedida),
       cantidad_recibida_anterior: parseFloat(detalle.cantidad_recibida),
       cantidad_recibida: parseFloat(detalle.cantidad_pedida) - parseFloat(detalle.cantidad_recibida),
@@ -77,6 +78,14 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
   const totalPendiente = formData.productos.reduce((sum, item) => 
     sum + (item.cantidad_pedida - item.cantidad_recibida_anterior - (parseFloat(item.cantidad_recibida) || 0)), 0
   );
+
+  if (!compra?.detalles) {
+    return (
+      <div className="flex items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+        Cargando detalles de la compra...
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

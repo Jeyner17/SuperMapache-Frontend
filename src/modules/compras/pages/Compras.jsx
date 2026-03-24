@@ -7,21 +7,30 @@ import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
 import Loading from '../../../shared/components/UI/Loading';
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Eye,
   Package,
   DollarSign,
-  TrendingUp,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Trash2
 } from 'lucide-react';
 import FormularioCompra from '../components/FormularioCompra';
 import DetallesCompra from '../components/DetallesCompra';
 import FormularioRecepcion from '../components/FormularioRecepcion';
 import { formatCurrency, formatDate } from '../../../shared/utils/formatters';
+
+const Tooltip = ({ text, children }) => (
+  <div className="relative group inline-flex">
+    {children}
+    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 dark:bg-gray-700 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50">
+      {text}
+    </span>
+  </div>
+);
 
 const Compras = () => {
   const { showSuccess, showError } = useNotification();
@@ -34,6 +43,7 @@ const Compras = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState(''); // 'crear' | 'detalle' | 'recibir'
   const [selectedCompra, setSelectedCompra] = useState(null);
+  const [cancelModal, setCancelModal] = useState({ open: false, compra: null, motivo: '' });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -89,10 +99,15 @@ const Compras = () => {
     setModalOpen(true);
   };
 
-  const handleRecibir = (compra) => {
-    setModalType('recibir');
-    setSelectedCompra(compra);
-    setModalOpen(true);
+  const handleRecibir = async (compra) => {
+    try {
+      const response = await compraService.getById(compra.id);
+      setModalType('recibir');
+      setSelectedCompra(response.data);
+      setModalOpen(true);
+    } catch (error) {
+      showError('Error al cargar los detalles de la compra');
+    }
   };
 
   const handleSubmitCompra = async (data) => {
@@ -117,17 +132,29 @@ const Compras = () => {
     }
   };
 
-  const handleCancelar = async (compra) => {
-    const motivo = window.prompt('Ingrese el motivo de cancelación:');
-    
-    if (!motivo) return;
+  const handleCancelar = (compra) => {
+    setCancelModal({ open: true, compra, motivo: '' });
+  };
 
+  const handleConfirmarCancelacion = async () => {
+    if (!cancelModal.motivo.trim()) return;
     try {
-      await compraService.cancelar(compra.id, motivo);
+      await compraService.cancelar(cancelModal.compra.id, cancelModal.motivo);
       showSuccess('Compra cancelada exitosamente');
+      setCancelModal({ open: false, compra: null, motivo: '' });
       cargarCompras();
     } catch (error) {
       showError(error.message || 'Error al cancelar compra');
+    }
+  };
+
+  const handleEliminar = async (compra) => {
+    try {
+      await compraService.delete(compra.id);
+      showSuccess('Compra eliminada exitosamente');
+      cargarCompras();
+    } catch (error) {
+      showError(error.message || 'Error al eliminar compra');
     }
   };
 
@@ -354,31 +381,44 @@ const Compras = () => {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleVerDetalle(compra)}
-                            className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                            title="Ver detalle"
-                          >
-                            <Eye size={18} className="text-blue-600" />
-                          </button>
-                          {(compra.estado === 'pendiente' || compra.estado === 'confirmada' || compra.estado === 'parcial') && (
+                        <div className="flex items-center justify-center gap-1">
+                          <Tooltip text="Ver detalles">
                             <button
-                              onClick={() => handleRecibir(compra)}
-                              className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
-                              title="Recibir mercancía"
+                              onClick={() => handleVerDetalle(compra)}
+                              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                             >
-                              <CheckCircle size={18} className="text-green-600" />
+                              <Eye size={18} className="text-blue-600" />
                             </button>
+                          </Tooltip>
+                          {(compra.estado === 'pendiente' || compra.estado === 'confirmada' || compra.estado === 'parcial') && (
+                            <Tooltip text="Recibir mercadería">
+                              <button
+                                onClick={() => handleRecibir(compra)}
+                                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+                              >
+                                <CheckCircle size={18} className="text-green-600" />
+                              </button>
+                            </Tooltip>
                           )}
                           {compra.estado !== 'cancelada' && compra.estado !== 'recibida' && (
-                            <button
-                              onClick={() => handleCancelar(compra)}
-                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                              title="Cancelar"
-                            >
-                              <XCircle size={18} className="text-red-600" />
-                            </button>
+                            <Tooltip text="Cancelar orden">
+                              <button
+                                onClick={() => handleCancelar(compra)}
+                                className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
+                              >
+                                <XCircle size={18} className="text-orange-600" />
+                              </button>
+                            </Tooltip>
+                          )}
+                          {compra.estado === 'pendiente' && (
+                            <Tooltip text="Eliminar orden">
+                              <button
+                                onClick={() => handleEliminar(compra)}
+                                className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                              >
+                                <Trash2 size={18} className="text-red-600" />
+                              </button>
+                            </Tooltip>
                           )}
                         </div>
                       </td>
@@ -420,6 +460,50 @@ const Compras = () => {
         </>
       )}
 
+      {/* Modal cancelación */}
+      <Modal
+        isOpen={cancelModal.open}
+        onClose={() => setCancelModal({ open: false, compra: null, motivo: '' })}
+        title="Cancelar Orden de Compra"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            ¿Estás seguro de que deseas cancelar la orden{' '}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {cancelModal.compra?.numero_compra}
+            </span>?
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Motivo de cancelación <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              rows={3}
+              value={cancelModal.motivo}
+              onChange={(e) => setCancelModal(prev => ({ ...prev, motivo: e.target.value }))}
+              placeholder="Ingrese el motivo..."
+              className="w-full rounded-lg border px-4 py-2.5 bg-white dark:bg-dark-card border-gray-300 dark:border-dark-border text-gray-900 dark:text-dark-text focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setCancelModal({ open: false, compra: null, motivo: '' })}
+            >
+              Volver
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmarCancelacion}
+              disabled={!cancelModal.motivo.trim()}
+            >
+              Confirmar Cancelación
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modales */}
       <Modal
         isOpen={modalOpen}
@@ -449,9 +533,9 @@ const Compras = () => {
           <DetallesCompra
             compra={selectedCompra}
             onClose={() => setModalOpen(false)}
-            onRecibir={() => {
+            onRecibir={async () => {
               setModalOpen(false);
-              setTimeout(() => handleRecibir(selectedCompra), 100);
+              await handleRecibir(selectedCompra);
             }}
           />
         )}
