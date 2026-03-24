@@ -17,6 +17,7 @@ import POS from '../modules/ventas/pages/POS';
 import Configuracion from '../modules/configuracion/pages/Configuracion';
 import Caja from '../modules/caja/pages/Caja';
 import Creditos from '../modules/creditos/pages/Creditos';
+import Alertas from '../modules/alertas/pages/Alertas';
 
 // Components
 import Loading from '../shared/components/UI/Loading';
@@ -72,7 +73,7 @@ const AppRoutes = () => {
           <Route path="caja" element={<Caja />} />
           <Route path="creditos" element={<Creditos />} />
           <Route path="gastos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Gastos (Sprint 9)</div>} />
-          <Route path="alertas" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Alertas (Sprint 8)</div>} />
+          <Route path="alertas" element={<Alertas />} />
           <Route path="auditoria" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Auditoría (Sprint 9)</div>} />
           <Route path="reportes" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Reportes (Sprint 10)</div>} />          
           <Route path="*" element={<NotFound />} />

@@ -1,6 +1,7 @@
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { Menu, Sun, Moon, LogOut } from 'lucide-react';
+import CampanaAlertas from '../../../modules/alertas/components/CampanaAlertas';
 
 const Navbar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
@@ -38,6 +39,9 @@ const Navbar = ({ onToggleSidebar }) => {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Campana de alertas */}
+          <CampanaAlertas />
+
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
