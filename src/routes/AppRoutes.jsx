@@ -15,8 +15,8 @@ import Compras from '../modules/compras/pages/Compras';
 import VerificacionProductos from '../modules/escaneo/pages/VerificacionProductos';
 import POS from '../modules/ventas/pages/POS';
 import Configuracion from '../modules/configuracion/pages/Configuracion';
-
-
+import Caja from '../modules/caja/pages/Caja';
+import Creditos from '../modules/creditos/pages/Creditos';
 
 // Components
 import Loading from '../shared/components/UI/Loading';
@@ -69,8 +69,8 @@ const AppRoutes = () => {
           
           {/* Placeholder para otros módulos */}
           <Route path="empleados" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Empleados (Sprint 2)</div>} />
-          <Route path="caja" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Caja (Sprint 7)</div>} />
-          <Route path="creditos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Créditos (Sprint 7)</div>} />
+          <Route path="caja" element={<Caja />} />
+          <Route path="creditos" element={<Creditos />} />
           <Route path="gastos" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Gastos (Sprint 9)</div>} />
           <Route path="alertas" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Alertas (Sprint 8)</div>} />
           <Route path="auditoria" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Auditoría (Sprint 9)</div>} />
