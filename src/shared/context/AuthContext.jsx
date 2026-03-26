@@ -60,6 +60,12 @@ export const AuthProvider = ({ children }) => {
     StorageService.setUser(userData);
   };
 
+  const hasPermission = (permiso) => {
+    if (!user) return false;
+    if (user.rol === 'admin') return true;
+    return Array.isArray(user.permisos) && user.permisos.includes(permiso);
+  };
+
   const value = {
     user,
     loading,
@@ -67,6 +73,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUser,
+    hasPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
