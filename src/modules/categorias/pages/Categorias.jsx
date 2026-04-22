@@ -6,15 +6,16 @@ import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
 import Loading from '../../../shared/components/UI/Loading';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Package,
   Eye,
   LayoutGrid,
-  List
+  List,
+  AlertTriangle
 } from 'lucide-react';
 import FormularioCategoria from '../components/FormularioCategoria';
 
@@ -27,6 +28,9 @@ const Categorias = () => {
   const [modalMode, setModalMode] = useState('create');
   const [selectedCategoria, setSelectedCategoria] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [categoriaToDelete, setCategoriaToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     cargarCategorias();
@@ -63,18 +67,29 @@ const Categorias = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = async (categoria) => {
-    if (!window.confirm(`¿Estás seguro de eliminar la categoría "${categoria.nombre}"?`)) {
-      return;
-    }
+  const handleDelete = (categoria) => {
+    setCategoriaToDelete(categoria);
+    setDeleteModalOpen(true);
+  };
 
+  const handleDeleteConfirm = async () => {
     try {
-      await categoriaService.delete(categoria.id);
+      setDeleting(true);
+      await categoriaService.delete(categoriaToDelete.id);
       showSuccess('Categoría eliminada exitosamente');
+      setDeleteModalOpen(false);
+      setCategoriaToDelete(null);
       cargarCategorias();
     } catch (error) {
       showError(error.message || 'Error al eliminar categoría');
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setCategoriaToDelete(null);
   };
 
   const handleSubmit = async (data) => {
@@ -215,7 +230,7 @@ const Categorias = () => {
         </Card>
       )}
 
-      {/* Modal */}
+      {/* Modal crear/editar/ver */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -234,6 +249,80 @@ const Categorias = () => {
           onSubmit={handleSubmit}
           onCancel={() => setModalOpen(false)}
         />
+      </Modal>
+
+      {/* Modal eliminar */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        title=""
+        showCloseButton={false}
+        size="sm"
+      >
+        <div className="flex flex-col items-center text-center px-2 pb-2">
+          {/* Icono */}
+          <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+            <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
+          </div>
+
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            ¿Eliminar categoría?
+          </h3>
+
+          <p className="text-gray-600 dark:text-gray-400 mb-1">
+            Estás a punto de eliminar
+          </p>
+
+          {/* Nombre de la categoría destacado */}
+          {categoriaToDelete && (
+            <div
+              className="flex items-center gap-2 px-4 py-2 rounded-lg mb-4 mt-1"
+              style={{ backgroundColor: (categoriaToDelete.color || '#6366f1') + '20' }}
+            >
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: categoriaToDelete.color || '#6366f1' }}
+              />
+              <span
+                className="font-semibold text-base"
+                style={{ color: categoriaToDelete.color || '#6366f1' }}
+              >
+                {categoriaToDelete.nombre}
+              </span>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Esta acción no se puede deshacer. Los productos asociados perderán su categoría.
+          </p>
+
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={handleDeleteCancel}
+              disabled={deleting}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+            >
+              {deleting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  Sí, eliminar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -54,6 +54,13 @@ class ProductoService {
   }
 
   /**
+   * Verificar si un producto puede eliminarse
+   */
+  async verificarEliminacion(id) {
+    return await api.get(`/productos/${id}/verificar-eliminacion`);
+  }
+
+  /**
    * Eliminar producto
    */
   async delete(id) {

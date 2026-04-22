@@ -7,17 +7,18 @@ import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
 import Loading from '../../../shared/components/UI/Loading';
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Filter,
   Package,
   Eye,
   BarChart3,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  AlertTriangle
 } from 'lucide-react';
 import FormularioProducto from '../components/FormularioProducto';
 import { formatCurrency } from '../../../shared/utils/formatters';
@@ -34,6 +35,11 @@ const Productos = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedProducto, setSelectedProducto] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productoToDelete, setProductoToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [verificando, setVerificando] = useState(false);
+  const [verificacion, setVerificacion] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -106,26 +112,40 @@ const Productos = () => {
   };
 
   const handleDelete = async (producto) => {
-    if (!window.confirm(`¿Estás seguro de eliminar el producto "${producto.nombre}"?`)) {
-      return;
-    }
-
+    setProductoToDelete(producto);
+    setVerificacion(null);
+    setDeleteModalOpen(true);
+    setVerificando(true);
     try {
-      console.log('🗑️ Eliminando producto ID:', producto.id);
-      
-      const response = await productoService.delete(producto.id);
-      
-      console.log('✅ Respuesta del servidor:', response);
-      
-      showSuccess('Producto eliminado exitosamente');
-      
-      // Recargar productos
-      await cargarProductos();
-      
-    } catch (error) {
-      console.error('❌ Error al eliminar:', error);
-      showError(error.message || 'Error al eliminar producto');
+      const res = await productoService.verificarEliminacion(producto.id);
+      setVerificacion(res.data);
+    } catch {
+      setVerificacion({ puedeEliminar: true, tieneStock: false, tieneVentas: false });
+    } finally {
+      setVerificando(false);
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setDeleting(true);
+      await productoService.delete(productoToDelete.id);
+      showSuccess('Producto eliminado exitosamente');
+      setDeleteModalOpen(false);
+      setProductoToDelete(null);
+      setVerificacion(null);
+      await cargarProductos();
+    } catch (error) {
+      showError(error.message || 'Error al eliminar producto');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setProductoToDelete(null);
+    setVerificacion(null);
   };
 
   const handleSubmit = async (data) => {
@@ -354,7 +374,7 @@ const Productos = () => {
         </>
       )}
 
-      {/* Modal */}
+      {/* Modal crear/editar/ver */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -374,6 +394,128 @@ const Productos = () => {
           onSubmit={handleSubmit}
           onCancel={() => setModalOpen(false)}
         />
+      </Modal>
+
+      {/* Modal eliminar */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        title=""
+        showCloseButton={false}
+        size="sm"
+      >
+        <div className="flex flex-col items-center text-center px-2 pb-2">
+          {/* Icono — rojo si puede eliminar, naranja si no */}
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+            verificacion && !verificacion.puedeEliminar
+              ? 'bg-orange-100 dark:bg-orange-900/30'
+              : 'bg-red-100 dark:bg-red-900/30'
+          }`}>
+            <AlertTriangle size={32} className={
+              verificacion && !verificacion.puedeEliminar
+                ? 'text-orange-500 dark:text-orange-400'
+                : 'text-red-600 dark:text-red-400'
+            } />
+          </div>
+
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            {verificacion && !verificacion.puedeEliminar
+              ? 'No se puede eliminar'
+              : '¿Eliminar producto?'}
+          </h3>
+
+          {/* Chip del producto */}
+          {productoToDelete && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg mb-4 bg-gray-100 dark:bg-gray-800">
+              {productoToDelete.imagen ? (
+                <img
+                  src={productoToDelete.imagen}
+                  alt={productoToDelete.nombre}
+                  className="w-8 h-8 object-contain rounded flex-shrink-0"
+                />
+              ) : (
+                <Package size={20} className="text-gray-500 flex-shrink-0" />
+              )}
+              <span className="font-semibold text-base text-gray-800 dark:text-white">
+                {productoToDelete.nombre}
+              </span>
+            </div>
+          )}
+
+          {/* Estado de verificación */}
+          {verificando ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
+              <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              Verificando condiciones...
+            </div>
+          ) : verificacion && !verificacion.puedeEliminar ? (
+            /* Bloqueos */
+            <div className="w-full mb-6 space-y-2 text-left">
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-3">
+                Este producto no puede eliminarse por las siguientes razones:
+              </p>
+              {verificacion.tieneStock && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                  <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
+                      Tiene stock en inventario
+                    </p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      {verificacion.stockTotal} unidades disponibles. Descuenta o ajusta el stock primero.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {verificacion.tieneVentas && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                  <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
+                      Tiene ventas registradas
+                    </p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      {verificacion.totalVentas} {verificacion.totalVentas === 1 ? 'venta registrada' : 'ventas registradas'}. No se puede eliminar por integridad de datos.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Esta acción no se puede deshacer. Se eliminará el producto y toda su información.
+            </p>
+          )}
+
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={handleDeleteCancel}
+              disabled={deleting}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors disabled:opacity-50"
+            >
+              {verificacion && !verificacion.puedeEliminar ? 'Cerrar' : 'Cancelar'}
+            </button>
+            {(!verificacion || verificacion.puedeEliminar) && (
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting || verificando}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Sí, eliminar
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );

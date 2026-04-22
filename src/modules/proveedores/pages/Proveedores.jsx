@@ -6,11 +6,11 @@ import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
 import Loading from '../../../shared/components/UI/Loading';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
   Eye,
   Phone,
   Mail,
@@ -18,7 +18,9 @@ import {
   TrendingUp,
   DollarSign,
   Package,
-  Star
+  Star,
+  AlertTriangle,
+  Building2
 } from 'lucide-react';
 import FormularioProveedor from '../components/FormularioProveedor';
 import DetallesProveedor from '../components/DetallesProveedor';
@@ -34,6 +36,9 @@ const Proveedores = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedProveedor, setSelectedProveedor] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [proveedorToDelete, setProveedorToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     clearTimeout(searchTimer.current);
@@ -78,18 +83,29 @@ const Proveedores = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = async (proveedor) => {
-    if (!window.confirm(`¿Estás seguro de eliminar el proveedor "${proveedor.razon_social}"?`)) {
-      return;
-    }
+  const handleDelete = (proveedor) => {
+    setProveedorToDelete(proveedor);
+    setDeleteModalOpen(true);
+  };
 
+  const handleDeleteConfirm = async () => {
     try {
-      await proveedorService.delete(proveedor.id);
+      setDeleting(true);
+      await proveedorService.delete(proveedorToDelete.id);
       showSuccess('Proveedor eliminado exitosamente');
+      setDeleteModalOpen(false);
+      setProveedorToDelete(null);
       cargarProveedores();
     } catch (error) {
       showError(error.message || 'Error al eliminar proveedor');
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setProveedorToDelete(null);
   };
 
   const handleSubmit = async (data) => {
@@ -254,7 +270,7 @@ const Proveedores = () => {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal crear/editar/ver */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -280,6 +296,76 @@ const Proveedores = () => {
             onCancel={() => setModalOpen(false)}
           />
         )}
+      </Modal>
+
+      {/* Modal eliminar */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        title=""
+        showCloseButton={false}
+        size="sm"
+      >
+        <div className="flex flex-col items-center text-center px-2 pb-2">
+          <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
+            <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
+          </div>
+
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            ¿Eliminar proveedor?
+          </h3>
+
+          <p className="text-gray-600 dark:text-gray-400 mb-1">
+            Estás a punto de eliminar
+          </p>
+
+          {proveedorToDelete && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg mb-4 mt-1 bg-gray-100 dark:bg-gray-800">
+              <Building2 size={20} className="text-gray-500 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold text-base text-gray-800 dark:text-white leading-tight">
+                  {proveedorToDelete.razon_social}
+                </p>
+                {proveedorToDelete.ruc && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    RUC: {proveedorToDelete.ruc}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Esta acción no se puede deshacer. Se eliminará el proveedor y toda su información.
+          </p>
+
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={handleDeleteCancel}
+              disabled={deleting}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+            >
+              {deleting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  Sí, eliminar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
