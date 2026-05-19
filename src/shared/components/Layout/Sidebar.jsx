@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { useTheme } from '../../hooks/useTheme';
+import { useAuth } from '../../hooks/useAuth';
 import {
   LayoutDashboard,
   Package,
-  ShoppingCart,
   Scan,
   Warehouse,
   Truck,
@@ -17,33 +17,48 @@ import {
   BarChart3,
   Settings,
   Tag,
+  Users,
   X
 } from 'lucide-react';
 
+// Roles del sistema
+const ADMIN      = 'administrador';
+const SUPERVISOR = 'supervisor';
+const CAJERO     = 'cajero';
+const EMPLEADO   = 'empleado';
+
+const ALL   = [ADMIN, SUPERVISOR, CAJERO, EMPLEADO];
+const STAFF = [ADMIN, SUPERVISOR];                    // gestión interna
+
+const menuItems = [
+  { path: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard',       color: 'text-blue-500',   roles: ALL },
+  { path: '/categorias',   icon: Tag,             label: 'Categorías',      color: 'text-green-500',  roles: STAFF },
+  { path: '/productos',    icon: Package,         label: 'Productos',       color: 'text-orange-500', roles: ALL },
+  { path: '/inventario',   icon: Warehouse,       label: 'Inventario',      color: 'text-cyan-500',   roles: [ADMIN, SUPERVISOR, EMPLEADO] },
+  { path: '/proveedores',  icon: Truck,           label: 'Proveedores',     color: 'text-indigo-500', roles: STAFF },
+  { path: '/empleados',    icon: Users,           label: 'Empleados',       color: 'text-violet-500', roles: STAFF },
+  { path: '/compras',      icon: ShoppingBag,     label: 'Compras',         color: 'text-pink-500',   roles: STAFF },
+  { path: '/escaneo',      icon: Scan,            label: 'Escáner',         color: 'text-teal-500',   roles: ALL },
+  { path: '/pos',          icon: Store,           label: 'Punto de Venta',  color: 'text-emerald-500',roles: [ADMIN, SUPERVISOR, CAJERO] },
+  { path: '/caja',         icon: Wallet,          label: 'Caja',            color: 'text-yellow-500', roles: [ADMIN, SUPERVISOR, CAJERO] },
+  { path: '/creditos',     icon: CreditCard,      label: 'Créditos',        color: 'text-red-500',    roles: [ADMIN, SUPERVISOR, CAJERO] },
+  { path: '/gastos',       icon: Receipt,         label: 'Gastos',          color: 'text-amber-500',  roles: STAFF },
+  { path: '/alertas',      icon: Bell,            label: 'Alertas',         color: 'text-rose-500',   roles: ALL },
+  { path: '/auditoria',    icon: FileText,        label: 'Auditoría',       color: 'text-slate-500',  roles: STAFF },
+  { path: '/reportes',     icon: BarChart3,       label: 'Reportes',        color: 'text-teal-500',   roles: STAFF },
+  { path: '/configuracion',icon: Settings,        label: 'Configuración',   color: 'text-gray-500',   roles: [ADMIN] },
+];
+
 const Sidebar = ({ isOpen, onToggle }) => {
   const { theme } = useTheme();
+  const { user }  = useAuth();
 
-  const menuItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-blue-500' },
-    { path: '/categorias', icon: Tag, label: 'Categorías', color: 'text-green-500' },
-    { path: '/productos', icon: Package, label: 'Productos', color: 'text-orange-500' },
-    { path: '/inventario', icon: Warehouse, label: 'Inventario', color: 'text-cyan-500' },
-    { path: '/proveedores', icon: Truck, label: 'Proveedores', color: 'text-indigo-500' },
-    { path: '/compras', icon: ShoppingBag, label: 'Compras', color: 'text-pink-500' },
-    { path: '/escaneo', icon: Scan, label:'Escaner', color: 'text-teal-500' },
-    { path: '/pos', icon: Store, label: 'Punto de Venta', color: 'text-emerald-500' },
-    { path: '/caja', icon: Wallet, label: 'Caja', color: 'text-yellow-500' },
-    { path: '/creditos', icon: CreditCard, label: 'Créditos', color: 'text-red-500' },
-    { path: '/gastos', icon: Receipt, label: 'Gastos', color: 'text-amber-500' },
-    { path: '/alertas', icon: Bell, label: 'Alertas', color: 'text-rose-500' },
-    { path: '/auditoria', icon: FileText, label: 'Auditoría', color: 'text-slate-500' },
-    { path: '/reportes', icon: BarChart3, label: 'Reportes', color: 'text-teal-500' },
-    { path: '/configuracion', icon: Settings, label: 'Configuración', color: 'text-gray-500' },
-  ];
+  const rol = user?.rol || '';
+  const itemsVisibles = menuItems.filter(item => item.roles.includes(rol));
 
   return (
     <>
-      {/* Backdrop/Overlay para móvil */}
+      {/* Backdrop móvil */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -78,7 +93,6 @@ const Sidebar = ({ isOpen, onToggle }) => {
               </div>
             </div>
 
-            {/* Botón cerrar en móvil */}
             <button
               onClick={onToggle}
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
@@ -90,15 +104,12 @@ const Sidebar = ({ isOpen, onToggle }) => {
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto py-4 px-2">
             <div className="space-y-1">
-              {menuItems.map((item) => (
+              {itemsVisibles.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   onClick={() => {
-                    // Cerrar sidebar en móvil al hacer clic
-                    if (window.innerWidth < 1024) {
-                      onToggle();
-                    }
+                    if (window.innerWidth < 1024) onToggle();
                   }}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${
@@ -110,8 +121,8 @@ const Sidebar = ({ isOpen, onToggle }) => {
                 >
                   {({ isActive }) => (
                     <>
-                      <item.icon 
-                        size={20} 
+                      <item.icon
+                        size={20}
                         className={`flex-shrink-0 ${isActive ? 'text-white' : item.color}`}
                       />
                       <span className="whitespace-nowrap overflow-hidden text-ellipsis">
@@ -124,10 +135,15 @@ const Sidebar = ({ isOpen, onToggle }) => {
             </div>
           </nav>
 
-          {/* Footer */}
+          {/* Footer — muestra el rol activo */}
           <div className="p-4 border-t border-gray-200 dark:border-dark-border">
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              v1.0.0 - Sprint 10
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 dark:text-gray-400">v1.0.0</span>
+              {rol && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 capitalize">
+                  {rol}
+                </span>
+              )}
             </div>
           </div>
         </div>

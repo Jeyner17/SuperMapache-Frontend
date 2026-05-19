@@ -165,18 +165,6 @@ const Login = () => {
             </Button>
           </form>
 
-          {/* Info de prueba */}
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-800 dark:text-blue-300 font-medium mb-1">
-              🔐 Credenciales de prueba:
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-400">
-              Usuario: <span className="font-mono font-bold">admin</span>
-            </p>
-            <p className="text-sm text-blue-700 dark:text-blue-400">
-              Contraseña: <span className="font-mono font-bold">admin123</span>
-            </p>
-          </div>
         </div>
 
         {/* Footer */}

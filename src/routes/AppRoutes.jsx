@@ -21,6 +21,7 @@ import Alertas    from '../modules/alertas/pages/Alertas';
 import Gastos     from '../modules/gastos/pages/Gastos';
 import Auditoria  from '../modules/auditoria/pages/Auditoria';
 import Reportes   from '../modules/reportes/pages/Reportes';
+import Empleados  from '../modules/empleados/pages/Empleados';
 
 // Components
 import Loading from '../shared/components/UI/Loading';
@@ -71,8 +72,8 @@ const AppRoutes = () => {
           {/* Sprint 6 - POS */}
           <Route path="pos" element={<POS />} />
           
-          {/* Placeholder para otros módulos */}
-          <Route path="empleados" element={<div className="text-2xl font-bold text-gray-800 dark:text-white">Módulo Empleados (Sprint 2)</div>} />
+          {/* Sprint 5 - Empleados */}
+          <Route path="empleados" element={<Empleados />} />
           <Route path="caja" element={<Caja />} />
           <Route path="creditos" element={<Creditos />} />
           <Route path="gastos"    element={<Gastos />} />

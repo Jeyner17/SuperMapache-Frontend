@@ -62,8 +62,10 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (permiso) => {
     if (!user) return false;
-    if (user.rol === 'admin') return true;
-    return Array.isArray(user.permisos) && user.permisos.includes(permiso);
+    if (user.rol === 'administrador') return true;
+    const permisos = Array.isArray(user.permisos) ? user.permisos : [];
+    if (permisos.includes('*')) return true;
+    return permisos.includes(permiso);
   };
 
   const value = {
