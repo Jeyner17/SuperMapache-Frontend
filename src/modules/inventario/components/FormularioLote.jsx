@@ -248,9 +248,10 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           label={
             <span>
               Fecha de Caducidad
-              {productoSeleccionado?.requiere_caducidad && (
-                <span className="text-red-500 ml-1">*</span>
-              )}
+              {productoSeleccionado?.requiere_caducidad
+                ? <span className="text-red-500 ml-1">*</span>
+                : <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs font-normal">(opcional)</span>
+              }
             </span>
           }
           name="fecha_caducidad"
@@ -258,6 +259,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           value={formData.fecha_caducidad}
           onChange={handleChange}
           error={errors.fecha_caducidad}
+          required={!!productoSeleccionado?.requiere_caducidad}
           min={new Date().toISOString().split('T')[0]}
         />
       </div>
