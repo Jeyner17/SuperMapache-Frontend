@@ -268,7 +268,7 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
             name="contacto_nombre"
             value={formData.contacto_nombre}
             onChange={handleChange}
-            placeholder="Juan Pérez"
+            placeholder="Jeyner Manzaba"
           />
 
           <Input
@@ -285,7 +285,7 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
             type="email"
             value={formData.contacto_email}
             onChange={handleChange}
-            placeholder="jperez@proveedor.com"
+            placeholder="jmanzaba@proveedor.com"
           />
         </div>
       </div>

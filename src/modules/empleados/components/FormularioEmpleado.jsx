@@ -11,6 +11,30 @@ const DEPARTAMENTOS = [
   { value: 'ventas',        label: 'Ventas' },
 ];
 
+const CARGOS = [
+  // Caja
+  { value: 'Cajero/a',           label: 'Cajero/a' },
+  { value: 'Cajero/a Senior',    label: 'Cajero/a Senior' },
+  { value: 'Supervisor/a de Caja', label: 'Supervisor/a de Caja' },
+  // Bodega
+  { value: 'Bodeguero/a',        label: 'Bodeguero/a' },
+  { value: 'Reponedor/a',        label: 'Reponedor/a' },
+  { value: 'Auxiliar de Bodega', label: 'Auxiliar de Bodega' },
+  // Administración
+  { value: 'Supervisor/a de Tienda', label: 'Supervisor/a de Tienda' },
+  { value: 'Gerente de Tienda',  label: 'Gerente de Tienda' },
+  { value: 'Asistente Administrativo/a', label: 'Asistente Administrativo/a' },
+  { value: 'Contador/a',         label: 'Contador/a' },
+  { value: 'Recursos Humanos',   label: 'Recursos Humanos' },
+  // Ventas
+  { value: 'Vendedor/a',         label: 'Vendedor/a' },
+  { value: 'Promotor/a',         label: 'Promotor/a' },
+  { value: 'Asesor/a de Ventas', label: 'Asesor/a de Ventas' },
+  // General
+  { value: 'Guardia de Seguridad', label: 'Guardia de Seguridad' },
+  { value: 'Personal de Limpieza', label: 'Personal de Limpieza' },
+];
+
 const TIPO_CONTRATO = [
   { value: 'indefinido', label: 'Indefinido' },
   { value: 'plazo_fijo', label: 'Plazo Fijo' },
@@ -157,14 +181,14 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Input label="Nombre completo" name="nombre" value={formData.nombre}
-              onChange={handleChange} error={errors.nombre} required placeholder="Ej: Juan Pérez" />
+              onChange={handleChange} error={errors.nombre} required placeholder="Ej: Jeyner Manzaba" />
           </div>
 
           <Input label="Email" name="email" type="email" value={formData.email}
-            onChange={handleChange} error={errors.email} required placeholder="juan@mapache.com" />
+            onChange={handleChange} error={errors.email} required placeholder="jmanzaba@supermapache.com" />
 
           <Input label="Username" name="username" value={formData.username}
-            onChange={handleChange} error={errors.username} required placeholder="jperez" />
+            onChange={handleChange} error={errors.username} required placeholder="jmanzaba" />
 
           {mode === 'create' && (
             <div className="md:col-span-2">
@@ -203,8 +227,9 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
       <div>
         <SectionTitle>Datos laborales</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input label="Cargo" name="cargo" value={formData.cargo}
-            onChange={handleChange} error={errors.cargo} required placeholder="Ej: Cajero Senior" />
+          <SelectField
+            label="Cargo" name="cargo" value={formData.cargo}
+            onChange={handleChange} error={errors.cargo} required options={CARGOS} />
 
           <SelectField
             label="Departamento" name="departamento" value={formData.departamento}

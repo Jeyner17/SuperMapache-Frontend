@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit, Trash2, KeyRound, Users,
-  UserCheck, Briefcase, Mail, Phone, ShieldCheck, AlertTriangle
+  UserCheck, UserPlus, Briefcase, Mail, Phone, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { useAuth } from '../../../shared/hooks/useAuth';
@@ -46,7 +46,7 @@ const initials = (nombre = '') =>
 
 // ── Tarjeta de empleado ───────────────────────────────────────────────────────
 
-const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onDelete }) => {
+const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onActivar, onDelete }) => {
   const { usuario, cargo, departamento } = empleado;
   const avatarBg = AVATAR_BG[departamento] || 'bg-gray-400';
 
@@ -104,20 +104,32 @@ const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onDelete }) => {
 
         {isAdmin && (
           <>
-            <button
-              onClick={() => onReset(empleado)}
-              title="Resetear contraseña"
-              className="py-2 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 transition-colors"
-            >
-              <KeyRound size={14} />
-            </button>
-            <button
-              onClick={() => onDelete(empleado)}
-              title="Desactivar empleado"
-              className="py-2 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 transition-colors"
-            >
-              <Trash2 size={14} />
-            </button>
+            {empleado.activo && (
+              <button
+                onClick={() => onReset(empleado)}
+                title="Resetear contraseña"
+                className="py-2 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 transition-colors"
+              >
+                <KeyRound size={14} />
+              </button>
+            )}
+            {empleado.activo ? (
+              <button
+                onClick={() => onDelete(empleado)}
+                title="Desactivar empleado"
+                className="py-2 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={() => onActivar(empleado)}
+                title="Activar empleado"
+                className="py-2 px-3 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
+              >
+                <UserPlus size={14} />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -187,6 +199,16 @@ const Empleados = () => {
     } catch (err) {
       showError(err.message || 'Error al guardar empleado');
       throw err; // para que el formulario no limpie loading antes
+    }
+  };
+
+  const handleActivar = async (empleado) => {
+    try {
+      await empleadoService.update(empleado.id, { activo: true });
+      showSuccess(`${empleado.usuario?.nombre} reactivado exitosamente`);
+      cargar();
+    } catch (err) {
+      showError(err.message || 'Error al activar empleado');
     }
   };
 
@@ -336,6 +358,7 @@ const Empleados = () => {
               isAdmin={isAdmin}
               onEdit={e => setFormModal({ open: true, mode: 'edit', data: e })}
               onReset={e => setResetModal({ open: true, empleado: e })}
+              onActivar={handleActivar}
               onDelete={e => setDeleteModal({ open: true, empleado: e, loading: false })}
             />
           ))}
