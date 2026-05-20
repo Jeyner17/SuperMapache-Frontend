@@ -100,6 +100,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
       producto_nombre: producto.nombre,
       cantidad: 1,
       precio_unitario: producto.precio_costo || 0,
+      porcentaje_iva: 12,
       numero_lote_proveedor: '',
       fecha_caducidad: ''
     }]);
@@ -120,14 +121,17 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
 
   const calcularTotales = () => {
     let subtotal = 0;
+    let impuestos = 0;
 
     productosSeleccionados.forEach(item => {
       const cantidad = parseFloat(item.cantidad) || 0;
       const precio = parseFloat(item.precio_unitario) || 0;
-      subtotal += cantidad * precio;
+      const porcentajeIva = parseFloat(item.porcentaje_iva) || 0;
+      const subtotalItem = cantidad * precio;
+      subtotal += subtotalItem;
+      impuestos += subtotalItem * (porcentajeIva / 100);
     });
 
-    const impuestos = subtotal * 0.12; // IVA 12%
     const descuento = parseFloat(formData.descuento) || 0;
     const total = subtotal + impuestos - descuento;
 
@@ -178,6 +182,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
           producto_id: item.producto_id,
           cantidad: parseFloat(item.cantidad),
           precio_unitario: parseFloat(item.precio_unitario),
+          porcentaje_iva: parseFloat(item.porcentaje_iva) || 0,
           numero_lote_proveedor: item.numero_lote_proveedor || null,
           fecha_caducidad: item.fecha_caducidad || null
         }))
@@ -354,7 +359,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   <div>
                     <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                       Cantidad *
@@ -383,6 +388,22 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
                       className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white text-sm ${errors[`producto_${index}_precio`] ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'
                         }`}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      IVA (%)
+                    </label>
+                    <select
+                      value={item.porcentaje_iva}
+                      onChange={(e) => handleProductoChange(index, 'porcentaje_iva', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white text-sm"
+                    >
+                      <option value={0}>0% (Exento)</option>
+                      <option value={5}>5%</option>
+                      <option value={12}>12%</option>
+                      <option value={15}>15%</option>
+                    </select>
                   </div>
 
                   <div>
@@ -440,7 +461,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">IVA (12%):</span>
+            <span className="text-gray-600 dark:text-gray-400">IVA:</span>
             <span className="font-medium text-gray-900 dark:text-white">
               {formatCurrency(totales.impuestos)}
             </span>

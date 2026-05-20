@@ -44,6 +44,7 @@ const Compras = () => {
   const [modalType, setModalType] = useState(''); // 'crear' | 'detalle' | 'recibir'
   const [selectedCompra, setSelectedCompra] = useState(null);
   const [cancelModal, setCancelModal] = useState({ open: false, compra: null, motivo: '' });
+  const [deleteModal, setDeleteModal] = useState({ open: false, compra: null });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -148,10 +149,15 @@ const Compras = () => {
     }
   };
 
-  const handleEliminar = async (compra) => {
+  const handleEliminar = (compra) => {
+    setDeleteModal({ open: true, compra });
+  };
+
+  const handleConfirmarEliminar = async () => {
     try {
-      await compraService.delete(compra.id);
+      await compraService.delete(deleteModal.compra.id);
       showSuccess('Compra eliminada exitosamente');
+      setDeleteModal({ open: false, compra: null });
       cargarCompras();
     } catch (error) {
       showError(error.message || 'Error al eliminar compra');
@@ -375,7 +381,8 @@ const Compras = () => {
                         <Badge variant={
                           compra.estado_pago === 'pagado' ? 'success' :
                           compra.estado_pago === 'pendiente' ? 'warning' :
-                          compra.estado_pago === 'vencido' ? 'danger' : 'info'
+                          compra.estado_pago === 'vencido' ? 'danger' :
+                          compra.estado_pago === 'cancelado' ? 'danger' : 'info'
                         }>
                           {compra.estado_pago}
                         </Badge>
@@ -459,6 +466,38 @@ const Compras = () => {
           )}
         </>
       )}
+
+      {/* Modal confirmación eliminar */}
+      <Modal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, compra: null })}
+        title="Eliminar Orden de Compra"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            ¿Estás seguro de que deseas eliminar la orden{' '}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {deleteModal.compra?.numero_compra}
+            </span>?{' '}
+            Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteModal({ open: false, compra: null })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmarEliminar}
+            >
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal cancelación */}
       <Modal
