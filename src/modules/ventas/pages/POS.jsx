@@ -144,12 +144,16 @@ const POS = () => {
           cantidad: item.cantidad,
           iva_porcentaje: item.iva_porcentaje ?? 0,
         })),
-        metodo_pago: datosPago.metodo_pago,
+        metodo_pago:    datosPago.metodo_pago,
         monto_recibido: datosPago.monto_recibido,
         descuento,
-        notas: datosPago.notas,
+        notas:      datosPago.notas,
         cliente_id: datosPago.cliente_id,
         dias_plazo: datosPago.dias_plazo,
+        ...(datosPago.metodo_pago === 'mixto' && {
+          monto_efectivo:      datosPago.monto_efectivo,
+          monto_transferencia: datosPago.monto_transferencia,
+        }),
       };
 
       const response = await ventaService.create(dataVenta);

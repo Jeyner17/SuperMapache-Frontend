@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Button from '../../../shared/components/UI/Button';
-import { DollarSign, CreditCard, Smartphone, Layers, FileText, Search, User } from 'lucide-react';
+import { DollarSign, CreditCard, Smartphone, Layers, FileText, Search, User, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/formatters';
 import api from '../../../shared/services/api.service';
 
@@ -24,15 +24,20 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
   const [buscandoClientes, setBuscandoClientes] = useState(false);
   const [diasPlazo, setDiasPlazo]             = useState(30);
 
+  // Estado exclusivo de mixto
+  const [montoEfectivo, setMontoEfectivo] = useState('');
+
   // Auto-llenar monto para métodos que no requieren cambio
   useEffect(() => {
-    if (['tarjeta', 'transferencia', 'mixto'].includes(metodoPago)) {
+    if (['tarjeta', 'transferencia'].includes(metodoPago)) {
       setMontoRecibido(total.toFixed(2));
     } else if (metodoPago === 'credito') {
       setMontoRecibido('0');
     } else {
       setMontoRecibido('');
     }
+    // Limpiar efectivo mixto al cambiar de método
+    if (metodoPago !== 'mixto') setMontoEfectivo('');
     // Limpiar cliente al cambiar de método
     if (metodoPago !== 'credito') {
       setClienteSeleccionado(null);
@@ -68,20 +73,38 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
     ? Math.max(0, (parseFloat(montoRecibido) || 0) - total)
     : 0;
 
+  // Validación de límite de crédito
+  const creditoDisponible = clienteSeleccionado
+    ? parseFloat(clienteSeleccionado.limite_credito) - parseFloat(clienteSeleccionado.saldo_pendiente)
+    : 0;
+  const excedeLimite = metodoPago === 'credito' && clienteSeleccionado !== null && total > creditoDisponible;
+
+  // Desglose mixto
+  const efectivoMixto      = Math.min(parseFloat(montoEfectivo) || 0, total);
+  const montoTransferencia = Math.max(0, total - efectivoMixto);
+
   const montoEsValido = metodoPago === 'credito'
-    ? clienteSeleccionado !== null
-    : (parseFloat(montoRecibido) || 0) >= total;
+    ? clienteSeleccionado !== null && !excedeLimite
+    : metodoPago === 'mixto'
+      ? montoEfectivo !== '' && parseFloat(montoEfectivo) >= 0 && parseFloat(montoEfectivo) <= total
+      : (parseFloat(montoRecibido) || 0) >= total;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!montoEsValido) return;
 
     onPagar({
-      metodo_pago: metodoPago,
-      monto_recibido: metodoPago === 'credito' ? 0 : (parseFloat(montoRecibido) || 0),
+      metodo_pago:     metodoPago,
+      monto_recibido:  metodoPago === 'credito' ? 0
+                     : metodoPago === 'mixto'   ? total
+                     : (parseFloat(montoRecibido) || 0),
       notas,
-      cliente_id: clienteSeleccionado?.id ?? null,
-      dias_plazo: diasPlazo,
+      cliente_id:  clienteSeleccionado?.id ?? null,
+      dias_plazo:  diasPlazo,
+      ...(metodoPago === 'mixto' && {
+        monto_efectivo:      efectivoMixto,
+        monto_transferencia: montoTransferencia,
+      }),
     });
   };
 
@@ -179,27 +202,54 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
 
             {/* Cliente seleccionado */}
             {clienteSeleccionado && (
-              <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
-                <User size={16} className="text-green-600 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-green-800 dark:text-green-300 truncate">
-                    {clienteSeleccionado.nombre}
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400">
-                    Límite: {formatCurrency(clienteSeleccionado.limite_credito)} —
-                    Saldo pendiente: {formatCurrency(clienteSeleccionado.saldo_pendiente)}
-                  </p>
+              <div className="space-y-2 mt-2">
+                <div className={`p-3 rounded-lg border flex items-center gap-2 ${
+                  excedeLimite
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                    : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                }`}>
+                  <User size={16} className={`flex-shrink-0 ${excedeLimite ? 'text-red-500' : 'text-green-600'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${
+                      excedeLimite ? 'text-red-800 dark:text-red-300' : 'text-green-800 dark:text-green-300'
+                    }`}>
+                      {clienteSeleccionado.nombre}
+                    </p>
+                    <p className={`text-xs ${excedeLimite ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      Límite: {formatCurrency(clienteSeleccionado.limite_credito)} &nbsp;·&nbsp;
+                      Pendiente: {formatCurrency(clienteSeleccionado.saldo_pendiente)} &nbsp;·&nbsp;
+                      <span className="font-semibold">
+                        Disponible: {formatCurrency(creditoDisponible)}
+                      </span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setClienteSeleccionado(null); setSearchCliente(''); }}
+                    className={`text-xs hover:underline ${
+                      excedeLimite ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'
+                    }`}
+                  >
+                    Cambiar
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClienteSeleccionado(null);
-                    setSearchCliente('');
-                  }}
-                  className="text-xs text-green-700 dark:text-green-400 hover:underline"
-                >
-                  Cambiar
-                </button>
+
+                {/* Alerta de límite excedido */}
+                {excedeLimite && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg">
+                    <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                        Límite de crédito excedido
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                        Esta venta ({formatCurrency(total)}) supera el crédito disponible
+                        del cliente ({formatCurrency(creditoDisponible)}). No se puede
+                        procesar hasta reducir el carrito o elegir otro método de pago.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -222,8 +272,8 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
         </div>
       )}
 
-      {/* Monto recibido — no aplica para crédito */}
-      {metodoPago !== 'credito' && (
+      {/* Monto recibido — efectivo, tarjeta y transferencia */}
+      {['efectivo', 'tarjeta', 'transferencia'].includes(metodoPago) && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Monto Recibido
@@ -238,15 +288,15 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
               min="0"
               value={montoRecibido}
               onChange={(e) => setMontoRecibido(e.target.value)}
-              readOnly={['tarjeta', 'transferencia', 'mixto'].includes(metodoPago)}
+              readOnly={['tarjeta', 'transferencia'].includes(metodoPago)}
               className={`w-full pl-8 pr-4 py-3 text-xl font-semibold border-2 rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500
-                ${['tarjeta', 'transferencia', 'mixto'].includes(metodoPago)
+                ${['tarjeta', 'transferencia'].includes(metodoPago)
                   ? 'bg-gray-50 dark:bg-dark-hover cursor-not-allowed opacity-70'
                   : ''}
                 ${montoRecibido && !montoEsValido ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'}`}
               placeholder="0.00"
               autoFocus={metodoPago === 'efectivo'}
-              required={metodoPago !== 'credito'}
+              required
             />
           </div>
           {montoRecibido && !montoEsValido && metodoPago === 'efectivo' && (
@@ -254,11 +304,69 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
               El monto recibido debe ser mayor o igual al total
             </p>
           )}
-          {metodoPago === 'mixto' && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Pago dividido entre efectivo y tarjeta. Se registra el total completo.
-            </p>
-          )}
+        </div>
+      )}
+
+      {/* Pago mixto — desglose efectivo + transferencia */}
+      {metodoPago === 'mixto' && (
+        <div className="space-y-3">
+          {/* Input efectivo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Monto en Efectivo
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 text-lg">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max={total}
+                value={montoEfectivo}
+                onChange={(e) => setMontoEfectivo(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                className={`w-full pl-8 pr-4 py-3 text-xl font-semibold border-2 rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 ${
+                  montoEfectivo !== '' && parseFloat(montoEfectivo) > total
+                    ? 'border-red-500'
+                    : 'border-gray-300 dark:border-dark-border'
+                }`}
+              />
+            </div>
+            {montoEfectivo !== '' && parseFloat(montoEfectivo) > total && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                El efectivo no puede superar el total a pagar
+              </p>
+            )}
+          </div>
+
+          {/* Desglose */}
+          <div className="rounded-lg border border-gray-200 dark:border-dark-border overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-dark-card">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <DollarSign size={14} className="text-emerald-500" />
+                Efectivo
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(efectivoMixto)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-dark-card border-t border-gray-100 dark:border-dark-border">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                <Smartphone size={14} className="text-blue-500" />
+                Transferencia
+              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(montoTransferencia)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-dark-hover border-t-2 border-gray-300 dark:border-dark-border">
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Total</span>
+              <span className="text-sm font-bold text-emerald-600">
+                {formatCurrency(total)} ✓
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

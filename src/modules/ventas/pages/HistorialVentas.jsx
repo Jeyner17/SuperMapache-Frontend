@@ -39,8 +39,9 @@ const METODO_CHIP = {
 const ESTADO_CHIP = {
   completada: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   cancelada:  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  pendiente:  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 };
-const ESTADO_LABELS = { completada: 'Completada', cancelada: 'Cancelada' };
+const ESTADO_LABELS = { completada: 'Completada', cancelada: 'Cancelada', pendiente: 'Pendiente' };
 
 const LIMIT = 15;
 
@@ -94,13 +95,16 @@ const HistorialVentas = () => {
     try {
       const res = await ventaService.getEstadisticas({
         fecha_inicio: fechaInicio,
-        fecha_fin: `${fechaFin}T23:59:59`,
+        fecha_fin:    `${fechaFin}T23:59:59`,
+        ...(estadoFiltro     && { estado:       estadoFiltro }),
+        ...(metodoPagoFiltro && { metodo_pago:  metodoPagoFiltro }),
+        ...(search           && { search }),
       });
       setStats(res.data ?? { total_ventas: 0, monto_total: 0, promedio_venta: 0 });
     } catch { /* stats no crítico */ } finally {
       setLoadingStats(false);
     }
-  }, [fechaInicio, fechaFin]);
+  }, [fechaInicio, fechaFin, estadoFiltro, metodoPagoFiltro, search]);
 
   // carga inicial (ventas del día actual)
   useEffect(() => {
@@ -249,7 +253,11 @@ const HistorialVentas = () => {
         <TarjetaStat
           icono={<ShoppingBag className="w-5 h-5 text-primary-600" />}
           fondo="bg-primary-50 dark:bg-primary-900/20"
-          etiqueta="Ventas completadas"
+          etiqueta={
+            estadoFiltro === 'cancelada' ? 'Ventas canceladas'        :
+            estadoFiltro === 'pendiente' ? 'Ventas pendientes (crédito)' :
+            'Ventas completadas'
+          }
           valor={loadingStats ? '…' : stats.total_ventas.toLocaleString()}
         />
         <TarjetaStat
@@ -314,6 +322,7 @@ const HistorialVentas = () => {
               <option value="">Todos</option>
               <option value="completada">Completada</option>
               <option value="cancelada">Cancelada</option>
+              <option value="pendiente">Pendiente (crédito)</option>
             </select>
           </div>
 

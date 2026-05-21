@@ -151,6 +151,25 @@ const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
               {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
             </Badge>
           </div>
+
+          {/* Desglose efectivo + transferencia para pago mixto */}
+          {venta.metodo_pago === 'mixto' &&
+            (parseFloat(venta.monto_efectivo) > 0 || parseFloat(venta.monto_transferencia) > 0) && (
+            <div className="ml-2 pl-2 border-l-2 border-gray-200 dark:border-dark-border space-y-0.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400 dark:text-gray-500">└ Efectivo:</span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {formatCurrency(venta.monto_efectivo)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400 dark:text-gray-500">└ Transferencia:</span>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {formatCurrency(venta.monto_transferencia)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Productos */}

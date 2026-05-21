@@ -59,14 +59,12 @@ class VentaService {
    */
   async getEstadisticas(filters = {}) {
     const params = new URLSearchParams();
-    
-    if (filters.fecha_inicio) {
-      params.append('fecha_inicio', filters.fecha_inicio);
-    }
-    
-    if (filters.fecha_fin) {
-      params.append('fecha_fin', filters.fecha_fin);
-    }
+
+    if (filters.fecha_inicio) params.append('fecha_inicio', filters.fecha_inicio);
+    if (filters.fecha_fin)    params.append('fecha_fin',    filters.fecha_fin);
+    if (filters.estado)       params.append('estado',       filters.estado);
+    if (filters.metodo_pago)  params.append('metodo_pago',  filters.metodo_pago);
+    if (filters.search)       params.append('search',       filters.search);
 
     return await api.get(`/ventas/estadisticas?${params.toString()}`);
   }
