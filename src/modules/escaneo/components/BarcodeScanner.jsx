@@ -5,13 +5,14 @@ import Card from '../../../shared/components/UI/Card';
 import Badge from '../../../shared/components/UI/Badge';
 import { Scan, Keyboard, Zap, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
-const BarcodeScanner = ({ 
-  onProductFound, 
-  modulo = 'verificacion',
+const BarcodeScanner = ({
+  onProductFound,
+  modulo = 'escaneo',
   showHistory = true,
-  autoFocus = true 
+  autoFocus = true
 }) => {
   const [inputValue, setInputValue] = useState('');
+  const [scannerDisplay, setScannerDisplay] = useState('');
   const [mode, setMode] = useState('scanner'); // 'scanner' | 'manual'
   const [history, setHistory] = useState([]);
   const inputRef = useRef(null);
@@ -30,8 +31,9 @@ const BarcodeScanner = ({
 
   useEffect(() => {
     if (lastScan) {
-      // Agregar al historial
-      setHistory(prev => [lastScan, ...prev.slice(0, 9)]); // Mantener últimos 10
+      setHistory(prev => [lastScan, ...prev.slice(0, 9)]);
+      // Limpiar el display del escáner físico tras cada resultado
+      setScannerDisplay('');
     }
   }, [lastScan]);
 
@@ -97,11 +99,13 @@ const BarcodeScanner = ({
               Escanea el código de barras del producto con tu lector
             </p>
             
-            {/* Input invisible para capturar el escaneo */}
+            {/* Input controlado para capturar el escaneo — se limpia automáticamente */}
             <input
               ref={inputRef}
               type="text"
               data-scanner="true"
+              value={scannerDisplay}
+              onChange={(e) => setScannerDisplay(e.target.value)}
               className="w-full px-4 py-3 border-2 border-dashed border-primary-300 dark:border-primary-600 rounded-lg bg-transparent text-center text-lg font-mono focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               placeholder="Escanea aquí o escribe el código..."
               autoFocus={autoFocus}

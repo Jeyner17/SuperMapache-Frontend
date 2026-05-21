@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../../shared/hooks/useAuth';
 import BarcodeScanner from '../components/BarcodeScanner';
 import Card from '../../../shared/components/UI/Card';
 import Badge from '../../../shared/components/UI/Badge';
@@ -15,7 +16,10 @@ import {
 import { formatCurrency } from '../../../shared/utils/formatters';
 
 const VerificacionProductos = () => {
+  const { user } = useAuth();
   const [productoActual, setProductoActual] = useState(null);
+
+  const puedeVerCostos = user?.rol === 'administrador' || user?.rol === 'supervisor';
 
   const handleProductFound = (producto) => {
     setProductoActual(producto);
@@ -76,7 +80,7 @@ const VerificacionProductos = () => {
         <div>
           <BarcodeScanner 
             onProductFound={handleProductFound}
-            modulo="verificacion"
+            modulo="escaneo"
             showHistory={true}
           />
         </div>
@@ -199,18 +203,22 @@ const VerificacionProductos = () => {
                   Información Adicional
                 </h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Precio Costo:</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {formatCurrency(productoActual.precio_costo)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Margen:</span>
-                    <span className="font-semibold text-green-600">
-                      {productoActual.margen_ganancia}%
-                    </span>
-                  </div>
+                  {puedeVerCostos && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Precio Costo:</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {formatCurrency(productoActual.precio_costo)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Margen:</span>
+                        <span className="font-semibold text-green-600">
+                          {productoActual.margen_ganancia}%
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Requiere Caducidad:</span>
                     <Badge variant={productoActual.requiere_caducidad ? 'warning' : 'default'} size="sm">

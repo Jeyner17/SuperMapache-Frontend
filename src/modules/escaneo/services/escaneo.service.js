@@ -4,7 +4,7 @@ class EscaneoService {
   /**
    * Escanear código de barras
    */
-  async escanear(codigoBarras, modulo = 'verificacion', metadata = {}) {
+  async escanear(codigoBarras, modulo = 'escaneo', metadata = {}) {
     return await api.post('/escaneo/scan', {
       codigo_barras: codigoBarras,
       modulo,
