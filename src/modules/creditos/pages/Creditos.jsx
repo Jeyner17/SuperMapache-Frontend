@@ -7,13 +7,12 @@ import Loading from '../../../shared/components/UI/Loading';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import creditoService from '../services/credito.service';
 import FormularioCliente from '../components/FormularioCliente';
-import FormularioCredito from '../components/FormularioCredito';
 import FormularioPago from '../components/FormularioPago';
 import DetallesCredito from '../components/DetallesCredito';
 import { formatCurrency, formatDate } from '../../../shared/utils/formatters';
 import {
-  Users, CreditCard, Plus, Search, Eye, DollarSign,
-  TrendingUp, AlertCircle, Edit, UserCheck
+  Users, CreditCard, Search, Eye, DollarSign,
+  TrendingUp, AlertCircle, Edit, UserCheck, ToggleLeft, ToggleRight
 } from 'lucide-react';
 
 const estadoConfig = {
@@ -48,7 +47,6 @@ const Creditos = () => {
   // Modals
   const [modalNuevoCliente, setModalNuevoCliente] = useState(false);
   const [modalEditarCliente, setModalEditarCliente] = useState(false);
-  const [modalNuevoCredito, setModalNuevoCredito] = useState(false);
   const [modalPago, setModalPago] = useState(false);
   const [modalDetalle, setModalDetalle] = useState(false);
   const [clienteEditar, setClienteEditar] = useState(null);
@@ -126,19 +124,18 @@ const Creditos = () => {
     }
   };
 
-  // Handlers créditos
-  const handleCrearCredito = async (data) => {
+  const handleToggleActivoCliente = async (cliente) => {
     try {
-      await creditoService.crearCredito(data);
-      showSuccess('Crédito registrado correctamente');
-      setModalNuevoCredito(false);
-      cargarCreditos(1);
+      await creditoService.actualizarCliente(cliente.id, { activo: !cliente.activo });
+      showSuccess(cliente.activo ? 'Cliente desactivado' : 'Cliente activado');
+      cargarClientes(clientesPag.page);
       cargarResumen();
     } catch (err) {
-      showError(err.response?.data?.message || 'Error al registrar crédito');
-      throw err;
+      showError(err.response?.data?.message || 'Error al cambiar estado del cliente');
     }
   };
+
+  // Handlers créditos
 
   const handleVerDetalle = async (credito) => {
     try {
@@ -169,11 +166,17 @@ const Creditos = () => {
     }
   };
 
+  const creditosActivos = resumen
+    ? (resumen.por_estado || [])
+        .filter(e => ['pendiente', 'parcial'].includes(e.estado))
+        .reduce((sum, e) => sum + parseInt(e.cantidad || 0, 10), 0)
+    : 0;
+
   const tarjetasResumen = resumen ? [
-    { label: 'Total Pendiente',  value: formatCurrency(resumen.total_pendiente),  color: 'text-red-600',     icon: TrendingUp },
-    { label: 'Total Vencido',    value: formatCurrency(resumen.total_vencido),    color: 'text-orange-600',  icon: AlertCircle },
-    { label: 'Clientes Activos', value: resumen.clientes_activos,                 color: 'text-primary-600', icon: UserCheck },
-    { label: 'Créditos Activos', value: (resumen.por_estado?.pendiente || 0) + (resumen.por_estado?.parcial || 0), color: 'text-blue-600', icon: CreditCard },
+    { label: 'Total Pendiente',  value: formatCurrency(resumen.total_pendiente),      color: 'text-red-600',     icon: TrendingUp },
+    { label: 'Total Vencido',    value: formatCurrency(resumen.total_vencido),         color: 'text-orange-600',  icon: AlertCircle },
+    { label: 'Clientes Activos', value: resumen.total_clientes_activos ?? 0,           color: 'text-primary-600', icon: UserCheck },
+    { label: 'Créditos Activos', value: creditosActivos,                               color: 'text-blue-600',    icon: CreditCard },
   ] : [];
 
   return (
@@ -187,9 +190,6 @@ const Creditos = () => {
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setModalNuevoCliente(true)}>
             <Users size={16} className="mr-1.5" /> Nuevo Cliente
-          </Button>
-          <Button onClick={() => setModalNuevoCredito(true)}>
-            <Plus size={16} className="mr-1.5" /> Registrar Crédito
           </Button>
         </div>
       </div>
@@ -277,15 +277,15 @@ const Creditos = () => {
                         </td>
                         <td className="px-4 py-3"><Badge variant={cfg.variant} size="sm">{cfg.label}</Badge></td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <button onClick={() => handleVerDetalle(c)} title="Ver detalle"
                               className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors">
                               <Eye size={15} />
                             </button>
                             {c.estado !== 'pagado' && (
-                              <button onClick={() => handleAbrirPago(c)} title="Registrar pago"
-                                className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors">
-                                <DollarSign size={15} />
+                              <button onClick={() => handleAbrirPago(c)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors">
+                                <DollarSign size={13} /> Abonar
                               </button>
                             )}
                           </div>
@@ -362,10 +362,21 @@ const Creditos = () => {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => { setClienteEditar(c); setModalEditarCliente(true); }} title="Editar"
-                          className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors">
-                          <Edit size={15} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => { setClienteEditar(c); setModalEditarCliente(true); }} title="Editar"
+                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors">
+                            <Edit size={15} />
+                          </button>
+                          <button onClick={() => handleToggleActivoCliente(c)}
+                            title={c.activo ? 'Desactivar cliente' : 'Activar cliente'}
+                            className={`p-1.5 rounded transition-colors ${
+                              c.activo
+                                ? 'text-green-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                : 'text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                            }`}>
+                            {c.activo ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -400,10 +411,6 @@ const Creditos = () => {
 
       <Modal isOpen={modalEditarCliente} onClose={() => { setModalEditarCliente(false); setClienteEditar(null); }} title="Editar Cliente">
         <FormularioCliente cliente={clienteEditar} onSubmit={handleEditarCliente} onCancel={() => { setModalEditarCliente(false); setClienteEditar(null); }} />
-      </Modal>
-
-      <Modal isOpen={modalNuevoCredito} onClose={() => setModalNuevoCredito(false)} title="Registrar Crédito">
-        <FormularioCredito onSubmit={handleCrearCredito} onCancel={() => setModalNuevoCredito(false)} />
       </Modal>
 
       <Modal isOpen={modalPago} onClose={() => { setModalPago(false); setCreditoPago(null); }} title="Registrar Pago">

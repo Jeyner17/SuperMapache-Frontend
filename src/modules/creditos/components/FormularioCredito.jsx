@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Button from '../../../shared/components/UI/Button';
 import creditoService from '../services/credito.service';
-import { Search, User } from 'lucide-react';
+import { Search, User, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/formatters';
 
 const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
@@ -17,6 +17,7 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState('');
   const debounceRef = useRef(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
+    setApiError('');
     try {
       await onSubmit({
         cliente_id: formData.cliente_id,
@@ -62,6 +64,8 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
         dias_plazo: parseInt(formData.dias_plazo),
         notas: formData.notas || undefined
       });
+    } catch (err) {
+      setApiError(err?.response?.data?.message || 'Error al registrar el crédito');
     } finally {
       setLoading(false);
     }
@@ -153,6 +157,13 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
           rows={2} placeholder="Descripción de la deuda..."
           className="w-full rounded-lg border px-4 py-2.5 bg-white dark:bg-dark-card border-gray-300 dark:border-dark-border text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500" />
       </div>
+
+      {apiError && (
+        <div className="flex items-start gap-2.5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg">
+          <AlertCircle size={18} className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+          <p className="text-sm font-medium text-red-700 dark:text-red-400">{apiError}</p>
+        </div>
+      )}
 
       <div className="flex justify-end gap-3 pt-2 border-t border-gray-200 dark:border-dark-border">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
