@@ -1,61 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import ventaService from '../services/venta.service';
 import BarcodeScanner from '../../escaneo/components/BarcodeScanner';
 import Card from '../../../shared/components/UI/Card';
 import Button from '../../../shared/components/UI/Button';
-import Badge from '../../../shared/components/UI/Badge';
 import Modal from '../../../shared/components/UI/Modal';
-import { 
-  ShoppingCart, 
-  Trash2, 
-  Plus, 
+import {
+  ShoppingCart,
+  Trash2,
+  Plus,
   Minus,
-  DollarSign,
-  CreditCard,
-  Smartphone,
+  AlertCircle,
   Receipt,
-  AlertCircle
+  History,
 } from 'lucide-react';
 import ModalPago from '../components/ModalPago';
 import ReciboVenta from '../components/ReciboVenta';
+import HistorialVentas from './HistorialVentas';
 import { formatCurrency } from '../../../shared/utils/formatters';
+
+const IVA_OPCIONES = [0, 5, 12, 15];
 
 const POS = () => {
   const { showSuccess, showError } = useNotification();
+
+  const [activeTab, setActiveTab] = useState('pos');
   const [carrito, setCarrito] = useState([]);
   const [descuento, setDescuento] = useState(0);
   const [modalPagoOpen, setModalPagoOpen] = useState(false);
   const [modalReciboOpen, setModalReciboOpen] = useState(false);
+  const [modalConfirmVaciar, setModalConfirmVaciar] = useState(false);
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [procesando, setProcesando] = useState(false);
 
-  const handleProductoEscaneado = (producto) => {
-    agregarAlCarrito(producto);
-  };
+  // ── Carrito ──────────────────────────────────────────────────────────────
 
   const agregarAlCarrito = (producto) => {
     const itemExistente = carrito.find(item => item.producto_id === producto.id);
-
     if (itemExistente) {
-      // Incrementar cantidad
       setCarrito(carrito.map(item =>
         item.producto_id === producto.id
           ? { ...item, cantidad: item.cantidad + 1 }
           : item
       ));
     } else {
-      // Agregar nuevo item
       setCarrito([...carrito, {
         producto_id: producto.id,
         nombre: producto.nombre,
         codigo_barras: producto.codigo_barras,
         precio_unitario: producto.precio_venta,
         cantidad: 1,
-        stock_disponible: producto.stock_actual
+        stock_disponible: producto.stock_actual,
+        iva_porcentaje: 0,
       }]);
     }
-
     showSuccess(`${producto.nombre} agregado al carrito`);
   };
 
@@ -64,16 +62,22 @@ const POS = () => {
       quitarDelCarrito(productoId);
       return;
     }
-
     const item = carrito.find(i => i.producto_id === productoId);
     if (item && nuevaCantidad > item.stock_disponible) {
       showError(`Stock insuficiente. Disponible: ${item.stock_disponible}`);
       return;
     }
-
     setCarrito(carrito.map(item =>
       item.producto_id === productoId
         ? { ...item, cantidad: nuevaCantidad }
+        : item
+    ));
+  };
+
+  const actualizarIVA = (productoId, ivaPorcentaje) => {
+    setCarrito(carrito.map(item =>
+      item.producto_id === productoId
+        ? { ...item, iva_porcentaje: ivaPorcentaje }
         : item
     ));
   };
@@ -82,24 +86,41 @@ const POS = () => {
     setCarrito(carrito.filter(item => item.producto_id !== productoId));
   };
 
+  // Muestra el modal de confirmación en vez de window.confirm
   const vaciarCarrito = () => {
     if (carrito.length === 0) return;
-    
-    if (window.confirm('¿Está seguro de vaciar el carrito?')) {
-      setCarrito([]);
-      setDescuento(0);
-    }
+    setModalConfirmVaciar(true);
   };
+
+  const confirmarVaciar = () => {
+    setCarrito([]);
+    setDescuento(0);
+    setModalConfirmVaciar(false);
+  };
+
+  // ── Totales ───────────────────────────────────────────────────────────────
 
   const calcularTotales = () => {
-    const subtotal = carrito.reduce((sum, item) => 
-      sum + (item.precio_unitario * item.cantidad), 0
+    const subtotal = carrito.reduce(
+      (sum, item) => sum + item.precio_unitario * item.cantidad, 0
     );
-    const impuestos = subtotal * 0.12; // IVA 12%
-    const total = subtotal + impuestos - descuento;
-
+    const impuestos = carrito.reduce((sum, item) => {
+      const itemSubtotal = item.precio_unitario * item.cantidad;
+      return sum + itemSubtotal * ((item.iva_porcentaje ?? 0) / 100);
+    }, 0);
+    const total = Math.max(0, subtotal + impuestos - descuento);
     return { subtotal, impuestos, total };
   };
+
+  // Label dinámico del IVA según las tasas en el carrito
+  const getIVALabel = () => {
+    if (carrito.length === 0) return 'IVA (12%)';
+    const tasas = [...new Set(carrito.map(i => i.iva_porcentaje ?? 0))];
+    if (tasas.length === 1) return `IVA (${tasas[0]}%)`;
+    return 'IVA (mixto)';
+  };
+
+  // ── Pago ──────────────────────────────────────────────────────────────────
 
   const handleProcesarPago = async (datosPago) => {
     if (carrito.length === 0) {
@@ -109,7 +130,8 @@ const POS = () => {
 
     const totales = calcularTotales();
 
-    if (datosPago.monto_recibido < totales.total) {
+    // Para crédito el monto recibido es 0, no aplicar la validación
+    if (datosPago.metodo_pago !== 'credito' && datosPago.monto_recibido < totales.total) {
       showError('El monto recibido es insuficiente');
       return;
     }
@@ -119,12 +141,15 @@ const POS = () => {
       const dataVenta = {
         productos: carrito.map(item => ({
           producto_id: item.producto_id,
-          cantidad: item.cantidad
+          cantidad: item.cantidad,
+          iva_porcentaje: item.iva_porcentaje ?? 0,
         })),
         metodo_pago: datosPago.metodo_pago,
         monto_recibido: datosPago.monto_recibido,
         descuento,
-        notas: datosPago.notas
+        notas: datosPago.notas,
+        cliente_id: datosPago.cliente_id,
+        dias_plazo: datosPago.dias_plazo,
       };
 
       const response = await ventaService.create(dataVenta);
@@ -133,11 +158,8 @@ const POS = () => {
       setVentaCompletada(venta);
       setModalPagoOpen(false);
       setModalReciboOpen(true);
-
-      // Limpiar carrito
       setCarrito([]);
       setDescuento(0);
-
       showSuccess('Venta procesada exitosamente');
     } catch (error) {
       showError(error.message || 'Error al procesar venta');
@@ -148,11 +170,40 @@ const POS = () => {
 
   const totales = calcularTotales();
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div className="h-[calc(100vh-80px)] flex gap-6 animate-fade-in">
-      {/* Panel Izquierdo - Escáner y Productos */}
+    <div className="h-[calc(100vh-80px)] flex flex-col animate-fade-in">
+
+      {/* ── Barra de pestañas ── */}
+      <div className="flex-shrink-0 flex border-b border-gray-200 dark:border-dark-border mb-4">
+        <TabBtn
+          activo={activeTab === 'pos'}
+          onClick={() => setActiveTab('pos')}
+          icono={<ShoppingCart size={15} />}
+          label="Punto de Venta"
+        />
+        <TabBtn
+          activo={activeTab === 'historial'}
+          onClick={() => setActiveTab('historial')}
+          icono={<History size={15} />}
+          label="Historial de Ventas"
+        />
+      </div>
+
+      {/* ── Pestaña: Historial ── */}
+      {activeTab === 'historial' && (
+        <div className="flex-1 overflow-hidden">
+          <HistorialVentas />
+        </div>
+      )}
+
+      {/* ── Pestaña: POS ── */}
+      {activeTab === 'pos' && (
+      <div className="flex-1 flex gap-6 overflow-hidden">
+
+      {/* ── Panel Izquierdo: Escáner + Carrito ── */}
       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
             Punto de Venta
@@ -162,23 +213,22 @@ const POS = () => {
           </p>
         </div>
 
-        {/* Escáner */}
         <div className="flex-shrink-0">
           <BarcodeScanner
-            onProductFound={handleProductoEscaneado}
+            onProductFound={agregarAlCarrito}
             modulo="pos"
             showHistory={false}
             autoFocus={true}
           />
         </div>
 
-        {/* Lista de Productos en Carrito */}
+        {/* Lista del carrito */}
         <Card className="flex-1 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-dark-border">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                 <ShoppingCart size={20} />
-                Carrito ({carrito.length} productos)
+                Carrito ({carrito.length} {carrito.length === 1 ? 'producto' : 'productos'})
               </h3>
               {carrito.length > 0 && (
                 <Button variant="secondary" size="sm" onClick={vaciarCarrito}>
@@ -193,9 +243,7 @@ const POS = () => {
             {carrito.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
                 <ShoppingCart className="w-16 h-16 text-gray-400 mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  El carrito está vacío
-                </p>
+                <p className="text-gray-500 dark:text-gray-400">El carrito está vacío</p>
                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                   Escanea un producto para comenzar
                 </p>
@@ -205,58 +253,91 @@ const POS = () => {
                 {carrito.map((item) => (
                   <div
                     key={item.producto_id}
-                    className="p-4 bg-gray-50 dark:bg-dark-hover rounded-lg"
+                    className="rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card overflow-hidden"
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {item.nombre}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                          {item.codigo_barras}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          Stock disponible: {item.stock_disponible}
-                        </p>
-                      </div>
+                    {/* ── Cabecera: nombre + eliminar ── */}
+                    <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
+                      <p className="font-semibold text-gray-900 dark:text-white leading-snug">
+                        {item.nombre}
+                      </p>
                       <button
                         onClick={() => quitarDelCarrito(item.producto_id)}
-                        className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                        className="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors group"
                       >
-                        <Trash2 size={18} className="text-red-600" />
+                        <Trash2 size={15} className="text-gray-400 group-hover:text-red-500 transition-colors" />
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                    {/* ── Chips: código + stock ── */}
+                    <div className="flex items-center gap-2 px-4 pb-3">
+                      <span className="text-xs font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-dark-hover px-2 py-0.5 rounded">
+                        {item.codigo_barras}
+                      </span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        item.stock_disponible <= 5
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : item.stock_disponible <= 20
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      }`}>
+                        Stock: {item.stock_disponible}
+                      </span>
+                    </div>
+
+                    {/* ── Controles: cantidad + IVA + precio ── */}
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-50 dark:bg-dark-hover border-t border-gray-100 dark:border-dark-border">
+
+                      {/* Cantidad */}
+                      <div className="flex items-center bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg overflow-hidden">
                         <button
                           onClick={() => actualizarCantidad(item.producto_id, item.cantidad - 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-dark-card border border-gray-300 dark:border-dark-border rounded hover:bg-gray-100 dark:hover:bg-dark-hover"
+                          className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors"
                         >
-                          <Minus size={16} />
+                          <Minus size={13} />
                         </button>
                         <input
                           type="number"
                           min="1"
                           max={item.stock_disponible}
                           value={item.cantidad}
-                          onChange={(e) => actualizarCantidad(item.producto_id, parseInt(e.target.value) || 1)}
-                          className="w-16 text-center px-2 py-1 border border-gray-300 dark:border-dark-border rounded bg-white dark:bg-dark-card text-gray-900 dark:text-white"
+                          onChange={(e) =>
+                            actualizarCantidad(item.producto_id, parseInt(e.target.value) || 1)
+                          }
+                          className="w-10 text-center text-sm font-bold bg-transparent text-gray-900 dark:text-white border-0 focus:ring-0 focus:outline-none"
                         />
                         <button
                           onClick={() => actualizarCantidad(item.producto_id, item.cantidad + 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-dark-card border border-gray-300 dark:border-dark-border rounded hover:bg-gray-100 dark:hover:bg-dark-hover"
                           disabled={item.cantidad >= item.stock_disponible}
+                          className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-hover transition-colors disabled:opacity-30"
                         >
-                          <Plus size={16} />
+                          <Plus size={13} />
                         </button>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {formatCurrency(item.precio_unitario)} c/u
+                      {/* IVA */}
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg px-2.5 h-8">
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 select-none">
+                          IVA
+                        </span>
+                        <select
+                          value={item.iva_porcentaje ?? 0}
+                          onChange={(e) =>
+                            actualizarIVA(item.producto_id, parseInt(e.target.value))
+                          }
+                          className="text-xs font-semibold bg-transparent text-primary-600 dark:text-primary-400 border-0 focus:ring-0 focus:outline-none cursor-pointer pr-1 dark:[color-scheme:dark]"
+                        >
+                          {IVA_OPCIONES.map(pct => (
+                            <option key={pct} value={pct}>{pct}%</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Precio (empuja a la derecha) */}
+                      <div className="ml-auto text-right">
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {formatCurrency(item.precio_unitario)} × {item.cantidad}
                         </p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        <p className="text-base font-bold text-gray-900 dark:text-white">
                           {formatCurrency(item.precio_unitario * item.cantidad)}
                         </p>
                       </div>
@@ -269,14 +350,12 @@ const POS = () => {
         </Card>
       </div>
 
-      {/* Panel Derecho - Resumen y Pago */}
+      {/* ── Panel Derecho: Totales + Pago ── */}
       <div className="w-96 flex flex-col gap-6">
-        {/* Resumen de Totales */}
         <Card className="p-6">
           <h3 className="font-semibold text-gray-800 dark:text-white mb-4">
             Resumen de Venta
           </h3>
-
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
@@ -286,7 +365,7 @@ const POS = () => {
             </div>
 
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">IVA (12%):</span>
+              <span className="text-gray-600 dark:text-gray-400">{getIVALabel()}:</span>
               <span className="font-medium text-gray-900 dark:text-white">
                 {formatCurrency(totales.impuestos)}
               </span>
@@ -317,42 +396,19 @@ const POS = () => {
           </div>
         </Card>
 
-        {/* Botones de Pago */}
+        {/* Botón de pago único — el método se elige dentro del ModalPago */}
         <div className="flex-1 flex flex-col gap-3">
           <Button
             onClick={() => setModalPagoOpen(true)}
             disabled={carrito.length === 0}
             size="lg"
-            className="h-16 text-lg"
+            className="h-20 text-xl"
           >
-            <DollarSign size={24} />
-            Efectivo
-          </Button>
-
-          <Button
-            onClick={() => setModalPagoOpen(true)}
-            disabled={carrito.length === 0}
-            variant="secondary"
-            size="lg"
-            className="h-16 text-lg"
-          >
-            <CreditCard size={24} />
-            Tarjeta
-          </Button>
-
-          <Button
-            onClick={() => setModalPagoOpen(true)}
-            disabled={carrito.length === 0}
-            variant="secondary"
-            size="lg"
-            className="h-16 text-lg"
-          >
-            <Smartphone size={24} />
-            Transferencia
+            Procesar Pago
           </Button>
         </div>
 
-        {/* Advertencia de Stock */}
+        {/* Advertencia de stock */}
         {carrito.some(item => item.cantidad > item.stock_disponible) && (
           <Card className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
             <div className="flex items-start gap-2">
@@ -365,8 +421,42 @@ const POS = () => {
           </Card>
         )}
       </div>
+      {/* cierra flex-1 flex gap-6 (contenido del POS) */}
+      </div>
+      )}
+      {/* fin pestaña POS */}
 
-      {/* Modal de Pago */}
+      {/* ── Modales — siempre montados para no perder estado ── */}
+      {/* ── Modal: Confirmar vaciar carrito ── */}
+      <Modal
+        isOpen={modalConfirmVaciar}
+        onClose={() => setModalConfirmVaciar(false)}
+        title="Confirmar acción"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700 dark:text-gray-300">
+            ¿Está seguro de vaciar el carrito?
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setModalConfirmVaciar(false)}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarVaciar}
+              className="flex-1 bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            >
+              Vaciar Carrito
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Modal: Processar Pago ── */}
       <Modal
         isOpen={modalPagoOpen}
         onClose={() => setModalPagoOpen(false)}
@@ -381,17 +471,19 @@ const POS = () => {
         />
       </Modal>
 
-      {/* Modal de Recibo */}
+      {/* ── Modal: Recibo ── */}
       <Modal
         isOpen={modalReciboOpen}
-        onClose={() => setModalReciboOpen(false)}
-        title="Venta Completada"
+        onClose={() => {
+          setModalReciboOpen(false);
+          setVentaCompletada(null);
+        }}
+        title="Comprobante de Venta"
         size="md"
       >
         {ventaCompletada && (
           <ReciboVenta
             venta={ventaCompletada}
-            onClose={() => setModalReciboOpen(false)}
             onNuevaVenta={() => {
               setModalReciboOpen(false);
               setVentaCompletada(null);
@@ -402,5 +494,20 @@ const POS = () => {
     </div>
   );
 };
+
+// ── Subcomponente: botón de pestaña ──────────────────────────────────────────
+const TabBtn = ({ activo, onClick, icono, label }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+      activo
+        ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-dark-border'
+    }`}
+  >
+    {icono}
+    {label}
+  </button>
+);
 
 export default POS;

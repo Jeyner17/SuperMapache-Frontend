@@ -1,119 +1,177 @@
-import { useRef } from 'react';
+import { useEffect } from 'react';
 import { useConfiguracion } from '../../../shared/hooks/useConfiguracion';
 import Button from '../../../shared/components/UI/Button';
 import Badge from '../../../shared/components/UI/Badge';
 import { formatCurrency, formatDateTime } from '../../../shared/utils/formatters';
-import { Receipt, Printer, ShoppingCart, CheckCircle } from 'lucide-react';
+import { Printer, ShoppingCart, CheckCircle } from 'lucide-react';
 
-const ReciboVenta = ({ venta, onClose, onNuevaVenta }) => {
-  const reciboRef = useRef(null);
+const METODO_LABELS = {
+  efectivo: 'Efectivo',
+  tarjeta: 'Tarjeta',
+  transferencia: 'Transferencia',
+  mixto: 'Mixto',
+  credito: 'Crédito',
+};
+
+const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
   const { getDatosEmpresa, getConfig } = useConfiguracion();
   const datosEmpresa = getDatosEmpresa();
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const mensajeHeader = getConfig('pos_mensaje_ticket_header', '¡Bienvenido!');
   const mensajeFooter = getConfig('pos_mensaje_ticket_footer', 'Gracias por su compra');
 
+  // CSS de impresión: oculta todo excepto el clon del ticket que se pega directo en <body>
+  // Usamos un clon en vez de position:fixed porque fixed se repite en cada página al imprimir
+  useEffect(() => {
+    const STYLE_ID = 'recibo-ticket-print-styles';
+    let style = document.getElementById(STYLE_ID);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = STYLE_ID;
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      @media print {
+        @page {
+          size: 80mm auto;
+          margin: 4mm 3mm;
+        }
+        body > *:not(#recibo-print-clone) {
+          display: none !important;
+        }
+        #recibo-print-clone {
+          display: block !important;
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 74mm !important;
+          background: #fff !important;
+          font-size: 11px !important;
+          color: #000 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+      }
+    `;
+    return () => {
+      document.getElementById(STYLE_ID)?.remove();
+    };
+  }, []);
+
+  const handlePrint = () => {
+    const source = document.getElementById('recibo-imprimible');
+    if (!source) return;
+
+    // Clonar el ticket directo en <body> para que position:absolute funcione
+    // sin repetirse en cada página (como haría position:fixed)
+    const clone = document.createElement('div');
+    clone.id = 'recibo-print-clone';
+    clone.innerHTML = source.innerHTML;
+    document.body.appendChild(clone);
+
+    window.print();
+
+    // Limpiar el clon tras cerrar el diálogo de impresión
+    setTimeout(() => clone.remove(), 500);
+  };
+
+  // Calcula el IVA real como porcentaje aproximado para el label del recibo
+  const ivaLabel = () => {
+    if (!venta.subtotal || parseFloat(venta.subtotal) === 0) return 'IVA';
+    const pct = (parseFloat(venta.impuestos) / parseFloat(venta.subtotal)) * 100;
+    const known = [0, 5, 12, 15];
+    const closest = known.reduce((prev, curr) =>
+      Math.abs(curr - pct) < Math.abs(prev - pct) ? curr : prev
+    );
+    return Math.abs(closest - pct) < 0.5 ? `IVA (${closest}%)` : 'IVA';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Éxito */}
-      <div className="text-center py-6">
-        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-10 h-10 text-green-600" />
+    <div className="space-y-4">
+      {/* Indicador de éxito */}
+      <div className="text-center py-4">
+        <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+          <CheckCircle className="w-9 h-9 text-green-600" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+        <h3 className="text-xl font-bold text-gray-800 dark:text-white">
           ¡Venta Completada!
         </h3>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           La venta se ha registrado exitosamente
         </p>
       </div>
 
-      {/* Recibo */}
-      <div 
-        ref={reciboRef}
-        className="p-6 bg-white dark:bg-dark-card border-2 border-dashed border-gray-300 dark:border-dark-border rounded-lg print:border-0"
+      {/* Ticket imprimible */}
+      <div
+        id="recibo-imprimible"
+        className="p-4 bg-white dark:bg-dark-card border border-dashed border-gray-300 dark:border-dark-border rounded-lg text-sm"
       >
-        {/* Header del Recibo */}
-        <div className="text-center mb-6 pb-4 border-b border-gray-200 dark:border-dark-border">
-          <Receipt className="w-12 h-12 mx-auto mb-2 text-primary-600" />
-          <h4 className="text-xl font-bold text-gray-800 dark:text-white">
+        {/* Cabecera empresa */}
+        <div className="text-center mb-4 pb-3 border-b border-gray-200 dark:border-dark-border">
+          <p className="font-bold text-base text-gray-900 dark:text-white">
             {datosEmpresa.nombre || 'Supermercado'}
-          </h4>
+          </p>
           {datosEmpresa.ruc && (
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              RUC: {datosEmpresa.ruc}
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">RUC: {datosEmpresa.ruc}</p>
           )}
           {datosEmpresa.direccion && (
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {datosEmpresa.direccion}
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{datosEmpresa.direccion}</p>
           )}
           {datosEmpresa.telefono && (
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Tel: {datosEmpresa.telefono}
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Tel: {datosEmpresa.telefono}</p>
           )}
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            {mensajeHeader}
-          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{mensajeHeader}</p>
         </div>
 
-        {/* Información de la Venta */}
-        <div className="mb-6 space-y-2 text-sm">
+        {/* Info de la venta */}
+        <div className="mb-4 space-y-1">
           <div className="flex justify-between">
-            <span className="text-gray-600 dark:text-gray-400">N° Venta:</span>
-            <span className="font-semibold text-gray-900 dark:text-white font-mono">
+            <span className="text-gray-500 dark:text-gray-400">N° Venta:</span>
+            <span className="font-semibold font-mono text-gray-900 dark:text-white text-xs">
               {venta.numero_venta}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600 dark:text-gray-400">Fecha:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
+            <span className="text-gray-900 dark:text-white text-xs">
               {formatDateTime(venta.fecha_venta)}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600 dark:text-gray-400">Cajero:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="text-gray-500 dark:text-gray-400">Cajero:</span>
+            <span className="text-gray-900 dark:text-white text-xs">
               {venta.usuario?.nombre}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600 dark:text-gray-400">Método de Pago:</span>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500 dark:text-gray-400">Pago:</span>
             <Badge variant="info" size="sm">
-              {venta.metodo_pago === 'efectivo' ? 'Efectivo' :
-               venta.metodo_pago === 'tarjeta' ? 'Tarjeta' :
-               venta.metodo_pago === 'transferencia' ? 'Transferencia' : 'Mixto'}
+              {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
             </Badge>
           </div>
         </div>
 
         {/* Productos */}
-        <div className="mb-6">
-          <h5 className="font-semibold text-gray-800 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-dark-border">
-            Productos
-          </h5>
-          <div className="space-y-3">
+        <div className="mb-4 pt-2 border-t border-gray-200 dark:border-dark-border">
+          <p className="font-semibold text-gray-800 dark:text-white mb-2">Productos</p>
+          <div className="space-y-2">
             {venta.detalles?.map((detalle, index) => (
-              <div key={index} className="text-sm">
-                <div className="flex justify-between mb-1">
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {detalle.producto.nombre}
+              <div key={index}>
+                <div className="flex justify-between">
+                  <span className="font-medium text-gray-900 dark:text-white leading-tight">
+                    {detalle.producto?.nombre}
                   </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
+                  <span className="font-semibold text-gray-900 dark:text-white whitespace-nowrap ml-2">
                     {formatCurrency(detalle.total)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                   <span>
-                    {detalle.cantidad} x {formatCurrency(detalle.precio_unitario)}
+                    {detalle.cantidad} × {formatCurrency(detalle.precio_unitario)}
                   </span>
-                  <span className="font-mono">{detalle.producto.codigo_barras}</span>
+                  <span className="font-mono">{detalle.producto?.codigo_barras}</span>
                 </div>
               </div>
             ))}
@@ -121,109 +179,73 @@ const ReciboVenta = ({ venta, onClose, onNuevaVenta }) => {
         </div>
 
         {/* Totales */}
-        <div className="pt-4 border-t-2 border-gray-300 dark:border-dark-border space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatCurrency(venta.subtotal)}
-            </span>
+        <div className="pt-2 border-t-2 border-gray-400 dark:border-dark-border space-y-1">
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">Subtotal:</span>
+            <span className="text-gray-900 dark:text-white">{formatCurrency(venta.subtotal)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600 dark:text-gray-400">IVA (12%):</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatCurrency(venta.impuestos)}
-            </span>
+          <div className="flex justify-between">
+            <span className="text-gray-500 dark:text-gray-400">{ivaLabel()}:</span>
+            <span className="text-gray-900 dark:text-white">{formatCurrency(venta.impuestos)}</span>
           </div>
           {parseFloat(venta.descuento) > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Descuento:</span>
-              <span className="font-medium text-red-600">
-                - {formatCurrency(venta.descuento)}
-              </span>
+            <div className="flex justify-between">
+              <span className="text-gray-500 dark:text-gray-400">Descuento:</span>
+              <span className="text-red-600">−{formatCurrency(venta.descuento)}</span>
             </div>
           )}
-          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-200 dark:border-dark-border">
-            <span className="text-gray-800 dark:text-white">TOTAL:</span>
-            <span className="text-primary-600">
-              {formatCurrency(venta.total)}
-            </span>
+          <div className="flex justify-between font-bold text-base pt-1 border-t border-gray-300 dark:border-dark-border">
+            <span className="text-gray-900 dark:text-white">TOTAL:</span>
+            <span className="text-primary-600">{formatCurrency(venta.total)}</span>
           </div>
         </div>
 
-        {/* Pago */}
+        {/* Cambio (solo efectivo) */}
         {venta.metodo_pago === 'efectivo' && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-dark-border space-y-1 text-sm">
+          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-border space-y-1">
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Recibido:</span>
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(venta.monto_recibido)}
-              </span>
+              <span className="text-gray-500 dark:text-gray-400">Recibido:</span>
+              <span className="text-gray-900 dark:text-white">{formatCurrency(venta.monto_recibido)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">Cambio:</span>
-              <span className="font-semibold text-green-600">
-                {formatCurrency(venta.cambio)}
-              </span>
+            <div className="flex justify-between font-semibold">
+              <span className="text-gray-500 dark:text-gray-400">Cambio:</span>
+              <span className="text-green-600">{formatCurrency(venta.cambio)}</span>
             </div>
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-dark-border text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {mensajeFooter}
-          </p>
+        {/* Pie */}
+        <div className="mt-4 pt-3 border-t border-gray-200 dark:border-dark-border text-center">
+          <p className="text-xs text-gray-500 dark:text-gray-400">{mensajeFooter}</p>
           {datosEmpresa.sitio_web && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              {datosEmpresa.sitio_web}
-            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{datosEmpresa.sitio_web}</p>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
             Conserve este recibo como comprobante
           </p>
         </div>
       </div>
 
-      {/* Botones */}
-      <div className="flex gap-3 print:hidden">
-        <Button 
-          variant="secondary" 
-          onClick={handlePrint}
-          className="flex-1"
-        >
-          <Printer size={20} />
-          Imprimir
-        </Button>
-        <Button 
-          onClick={onNuevaVenta}
-          className="flex-1"
-        >
-          <ShoppingCart size={20} />
-          Nueva Venta
-        </Button>
-      </div>
-
-      {/* CSS para impresión */}
-      <style jsx>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print\\:border-0,
-          .print\\:border-0 * {
-            visibility: visible;
-          }
-          .print\\:border-0 {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 80mm;
-          }
-          .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
+      {/* Botones — ocultos al imprimir y opcionales según el contexto */}
+      {!sinAcciones ? (
+        <div className="flex gap-3 print:hidden">
+          <Button variant="secondary" onClick={handlePrint} className="flex-1">
+            <Printer size={18} />
+            Imprimir
+          </Button>
+          <Button onClick={onNuevaVenta} className="flex-1">
+            <ShoppingCart size={18} />
+            Nueva Venta
+          </Button>
+        </div>
+      ) : (
+        <div className="flex justify-center print:hidden">
+          <Button variant="secondary" onClick={handlePrint}>
+            <Printer size={18} />
+            Imprimir comprobante
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
