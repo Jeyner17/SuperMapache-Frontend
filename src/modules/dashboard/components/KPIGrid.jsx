@@ -38,18 +38,21 @@ const pctChange = (val, prev) => {
 };
 
 const KPIGrid = ({ kpis, loading }) => {
-  const ventasHoyChange = kpis ? pctChange(kpis.ventas_hoy, kpis.ventas_ayer) : null;
+  const vsAyer = kpis?.ventas_hoy?.vs_ayer;
+  const ventasHoyChange = vsAyer != null
+    ? { label: `${vsAyer > 0 ? '+' : ''}${vsAyer}%`, type: vsAyer >= 0 ? 'up' : 'down' }
+    : null;
 
   const cards = [
     {
       icon: DollarSign, label: 'Ventas Hoy',
-      value: kpis ? formatCurrency(kpis.ventas_hoy) : '-',
+      value: kpis ? formatCurrency(kpis.ventas_hoy?.total) : '-',
       change: ventasHoyChange?.label, changeType: ventasHoyChange?.type,
       color: 'bg-green-500',
     },
     {
       icon: TrendingUp, label: 'Ventas del Mes',
-      value: kpis ? formatCurrency(kpis.ventas_mes) : '-',
+      value: kpis ? formatCurrency(kpis.ventas_mes?.total) : '-',
       color: 'bg-indigo-500',
     },
     {
@@ -80,7 +83,7 @@ const KPIGrid = ({ kpis, loading }) => {
     },
     {
       icon: CreditCard, label: 'Créditos Pendientes',
-      value: kpis ? formatCurrency(kpis.creditos_pendientes) : '-',
+      value: kpis ? formatCurrency(kpis.creditos_pendientes?.total) : '-',
       color: 'bg-pink-500',
     },
   ];

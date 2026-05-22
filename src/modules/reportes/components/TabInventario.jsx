@@ -44,20 +44,20 @@ const TabInventario = ({ onExportar, exporting }) => {
   return (
     <div className="space-y-6">
       {/* KPIs de valor */}
-      {!loading && valorInventario && (
+      {!loading && valorInventario?.resumen && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-5 text-center">
             <p className="text-xs text-gray-500 mb-2">Valor Total Inventario</p>
-            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(valorInventario.valor_total)}</p>
+            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(valorInventario.resumen.valor_total)}</p>
           </Card>
           <Card className="p-5 text-center">
             <p className="text-xs text-gray-500 mb-2">Productos Únicos</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{valorInventario.total_productos}</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{Number(valorInventario.resumen.total_productos)}</p>
           </Card>
           <Card className="p-5 text-center">
             <p className="text-xs text-gray-500 mb-2">Unidades Totales</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">
-              {Number(valorInventario.total_unidades).toLocaleString()}
+              {Number(valorInventario.resumen.total_unidades).toLocaleString()}
             </p>
           </Card>
         </div>

@@ -38,5 +38,4 @@ export const ROUTES = {
   ALERTAS: '/alertas',
   AUDITORIA: '/auditoria',
   REPORTES: '/reportes',
-  CONFIGURACION: '/configuracion',
 };

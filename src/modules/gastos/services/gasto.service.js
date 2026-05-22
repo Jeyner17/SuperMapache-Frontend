@@ -7,6 +7,7 @@ const gastoService = {
   crearGasto:   (data)        => api.post('/gastos', data),
   actualizarGasto: (id, data) => api.put(`/gastos/${id}`, data),
   eliminarGasto:   (id)       => api.delete(`/gastos/${id}`),
+  exportarXLS: (params = {})  => api.get('/gastos/exportar', { params, responseType: 'blob' }),
 };
 
 export default gastoService;

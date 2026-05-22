@@ -14,7 +14,6 @@ import Proveedores from '../modules/proveedores/pages/Proveedores';
 import Compras from '../modules/compras/pages/Compras';
 import VerificacionProductos from '../modules/escaneo/pages/VerificacionProductos';
 import POS from '../modules/ventas/pages/POS';
-import Configuracion from '../modules/configuracion/pages/Configuracion';
 import Caja from '../modules/caja/pages/Caja';
 import Creditos from '../modules/creditos/pages/Creditos';
 import Alertas    from '../modules/alertas/pages/Alertas';
@@ -52,9 +51,6 @@ const AppRoutes = () => {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          {/* Sprint 1 - Configuración */}
-          <Route path="configuracion" element={<Configuracion />} />
-
           {/* Sprint 2 - Categorías y Productos */}
           <Route path="categorias" element={<Categorias />} />
           <Route path="productos" element={<Productos />} />

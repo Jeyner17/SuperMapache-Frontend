@@ -15,7 +15,6 @@ import {
   Bell,
   FileText,
   BarChart3,
-  Settings,
   Tag,
   Users,
   X
@@ -46,7 +45,6 @@ const menuItems = [
   { path: '/alertas',      icon: Bell,            label: 'Alertas',         color: 'text-rose-500',   roles: ALL },
   { path: '/auditoria',    icon: FileText,        label: 'Auditoría',       color: 'text-slate-500',  roles: STAFF },
   { path: '/reportes',     icon: BarChart3,       label: 'Reportes',        color: 'text-teal-500',   roles: STAFF },
-  { path: '/configuracion',icon: Settings,        label: 'Configuración',   color: 'text-gray-500',   roles: [ADMIN] },
 ];
 
 const Sidebar = ({ isOpen, onToggle }) => {

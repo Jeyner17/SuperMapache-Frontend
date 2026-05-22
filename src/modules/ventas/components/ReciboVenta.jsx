@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useConfiguracion } from '../../../shared/hooks/useConfiguracion';
 import Button from '../../../shared/components/UI/Button';
 import Badge from '../../../shared/components/UI/Badge';
 import { formatCurrency, formatDateTime } from '../../../shared/utils/formatters';
@@ -14,10 +13,11 @@ const METODO_LABELS = {
 };
 
 const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
-  const { getDatosEmpresa, getConfig } = useConfiguracion();
-  const datosEmpresa = getDatosEmpresa();
-  const mensajeHeader = getConfig('pos_mensaje_ticket_header', '¡Bienvenido!');
-  const mensajeFooter = getConfig('pos_mensaje_ticket_footer', 'Gracias por su compra');
+  const datosEmpresa = {
+    nombre: 'SuperMapache',
+  };
+  const mensajeHeader = '¡Bienvenido a SuperMapache!';
+  const mensajeFooter = 'Gracias por su compra. ¡Vuelva pronto!';
 
   // CSS de impresión: oculta todo excepto el clon del ticket que se pega directo en <body>
   // Usamos un clon en vez de position:fixed porque fixed se repite en cada página al imprimir

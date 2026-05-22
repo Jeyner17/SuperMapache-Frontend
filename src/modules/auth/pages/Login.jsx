@@ -5,7 +5,8 @@ import { useNotification } from '../../../shared/hooks/useNotification';
 import { useTheme } from '../../../shared/hooks/useTheme';
 import Button from '../../../shared/components/UI/Button';
 import Input from '../../../shared/components/UI/Input';
-import { User, Lock, Moon, Sun, ShoppingBag } from 'lucide-react';
+import { User, Lock, Moon, Sun, Eye, EyeOff } from 'lucide-react';
+import logo from '../../../assets/images/logo_supermapache.png';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -98,11 +100,15 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo y título */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl shadow-lg mb-4">
-            <ShoppingBag className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src={logo}
+              alt="SuperMercado Mapache"
+              className="h-40 w-auto object-contain drop-shadow-lg"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-            SuperMercado Mapache
+            SuperMapache
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Sistema de Gestión Integral
@@ -133,12 +139,22 @@ const Login = () => {
             <Input
               label="Contraseña"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="Ingresa tu contraseña"
               value={formData.password}
               onChange={handleChange}
               error={errors.password}
               icon={Lock}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              }
             />
 
             {/* Recordar sesión (opcional) */}

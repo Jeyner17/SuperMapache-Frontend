@@ -33,7 +33,7 @@ const FilaMovimiento = ({ mov }) => {
         {esEgreso ? '-' : '+'}{formatCurrency(mov.monto)}
       </td>
       <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-        {formatDateTime(mov.created_at)}
+        {formatDateTime(mov.created_at || mov.createdAt)}
       </td>
     </tr>
   );
@@ -133,7 +133,7 @@ const DetallesTurno = ({ turno, onClose }) => {
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tipo</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Descripción</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Monto</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Hora</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-dark-card divide-y divide-gray-100 dark:divide-gray-700">

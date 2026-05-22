@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useNotification } from '../../../shared/hooks/useNotification';
@@ -63,6 +63,8 @@ const HistorialVentas = () => {
   const [estadoFiltro, setEstadoFiltro]       = useState('');
   const [metodoPagoFiltro, setMetodoPagoFiltro] = useState('');
   const [search, setSearch] = useState('');
+
+  const [exportando, setExportando] = useState(false);
 
   // modal comprobante
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -133,128 +135,238 @@ const HistorialVentas = () => {
     cargarStats();
   };
 
-  // ── Exportar Excel (.xlsx) ─────────────────────────────────────────────────
-  const exportarExcel = () => {
-    const wb = XLSX.utils.book_new();
+  // ── Fetch de TODOS los registros filtrados (sin paginar) ──────────────────
+  const obtenerTodasLasVentas = async () => {
+    const res = await ventaService.getAll({
+      page: 1,
+      limit: 10000,
+      fecha_inicio: fechaInicio,
+      fecha_fin: `${fechaFin}T23:59:59`,
+      ...(estadoFiltro     && { estado: estadoFiltro }),
+      ...(metodoPagoFiltro && { metodo_pago: metodoPagoFiltro }),
+      ...(search           && { search }),
+    });
+    return res.data?.ventas ?? [];
+  };
 
-    const filas = [
-      ['Historial de Ventas'],
-      [`Período: ${fechaInicio}  al  ${fechaFin}`],
-      [`${stats.total_ventas} ventas completadas`, '', '', '', 'Monto total:', parseFloat(stats.monto_total)],
-      [],
-      ['N° Venta', 'Fecha', 'Vendedor', 'Método de Pago', 'Estado', 'Total ($)'],
-      ...ventas.map(v => [
-        v.numero_venta,
-        formatDateTime(v.fecha_venta),
-        v.usuario?.nombre ?? '—',
-        METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
-        ESTADO_LABELS[v.estado]     ?? v.estado,
-        parseFloat(v.total),
-      ]),
-      [],
-      ['', '', '', '', 'TOTAL PERÍODO:', parseFloat(stats.monto_total)],
-    ];
+  // ── Exportar Excel (.xlsx) — ExcelJS con estilos ──────────────────────────
+  const exportarExcel = async () => {
+    setExportando(true);
+    try {
+      const todas = await obtenerTodasLasVentas();
 
-    const ws = XLSX.utils.aoa_to_sheet(filas);
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'SuperMapache';
+      const ws = wb.addWorksheet('Ventas', { views: [{ showGridLines: false }] });
 
-    ws['!cols'] = [
-      { wch: 24 },
-      { wch: 20 },
-      { wch: 22 },
-      { wch: 16 },
-      { wch: 14 },
-      { wch: 14 },
-    ];
+      // Anchos de columna
+      ws.columns = [
+        { key: 'numero',  width: 26 },
+        { key: 'fecha',   width: 22 },
+        { key: 'cajero',  width: 24 },
+        { key: 'metodo',  width: 18 },
+        { key: 'estado',  width: 16 },
+        { key: 'total',   width: 16 },
+      ];
 
-    // Formato numérico para columna Total (F, índice 5), filas de datos
-    const dataStart = 6; // fila 1-indexed donde empieza la data (después de 5 filas de encabezado)
-    for (let r = dataStart; r < dataStart + ventas.length; r++) {
-      const cellRef = XLSX.utils.encode_cell({ r, c: 5 });
-      if (ws[cellRef]) ws[cellRef].z = '#,##0.00';
+      // ── Fila 1: Título ─────────────────────────────────────────────────────
+      ws.mergeCells('A1:F1');
+      const tituloCell = ws.getCell('A1');
+      tituloCell.value = 'Historial de Ventas';
+      tituloCell.font  = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FF1E293B' } };
+      tituloCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      tituloCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      ws.getRow(1).height = 28;
+
+      // ── Fila 2: Período ────────────────────────────────────────────────────
+      ws.mergeCells('A2:F2');
+      const periodoCell = ws.getCell('A2');
+      periodoCell.value = `Período: ${fechaInicio}  al  ${fechaFin}   ·   ${todas.length} registros`;
+      periodoCell.font  = { name: 'Calibri', size: 10, color: { argb: 'FF64748B' } };
+      periodoCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      periodoCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      ws.getRow(2).height = 18;
+
+      // ── Fila 3: vacía ──────────────────────────────────────────────────────
+      ws.getRow(3).height = 6;
+
+      // ── Fila 4: Encabezados ────────────────────────────────────────────────
+      const HEADER_BG   = 'FF0F172A';
+      const HEADER_TEXT = 'FFFFFFFF';
+      const headers = ['N° Venta', 'Fecha', 'Cajero', 'Método de Pago', 'Estado', 'Total ($)'];
+      const headerRow = ws.getRow(4);
+      headers.forEach((h, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = h;
+        cell.font  = { name: 'Calibri', size: 10, bold: true, color: { argb: HEADER_TEXT } };
+        cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_BG } };
+        cell.alignment = { vertical: 'middle', horizontal: i === 5 ? 'right' : 'left', indent: 1 };
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FF334155' } } };
+      });
+      headerRow.height = 22;
+
+      // ── Filas de datos ─────────────────────────────────────────────────────
+      const ROW_ALT  = 'FFF1F5F9';
+      const ROW_BASE = 'FFFFFFFF';
+      todas.forEach((v, idx) => {
+        const row = ws.addRow([
+          v.numero_venta,
+          formatDateTime(v.fecha_venta),
+          v.usuario?.nombre ?? '—',
+          METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
+          ESTADO_LABELS[v.estado]     ?? v.estado,
+          parseFloat(v.total),
+        ]);
+        row.height = 18;
+        const bg = idx % 2 === 0 ? ROW_BASE : ROW_ALT;
+        row.eachCell((cell, colNum) => {
+          cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF1E293B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+          cell.alignment = { vertical: 'middle', horizontal: colNum === 6 ? 'right' : 'left', indent: 1 };
+          cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } };
+          if (colNum === 6) cell.numFmt = '#,##0.00';
+        });
+      });
+
+      // ── Fila vacía ─────────────────────────────────────────────────────────
+      ws.addRow([]);
+
+      // ── Fila de total ──────────────────────────────────────────────────────
+      const totalRow = ws.addRow(['', '', '', '', 'TOTAL PERÍODO:', parseFloat(stats.monto_total)]);
+      totalRow.height = 20;
+      totalRow.eachCell((cell, colNum) => {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+        cell.alignment = { vertical: 'middle', horizontal: colNum === 6 ? 'right' : 'right', indent: 1 };
+        cell.border = { top: { style: 'thin', color: { argb: 'FF94A3B8' } } };
+        if (colNum === 6) cell.numFmt = '#,##0.00';
+      });
+
+      // Descargar
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `ventas_${fechaInicio}_al_${fechaFin}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showError(err.message || 'Error al exportar Excel');
+    } finally {
+      setExportando(false);
     }
-    // Fila de total
-    const totalRow = dataStart + ventas.length + 1;
-    const totalCell = XLSX.utils.encode_cell({ r: totalRow, c: 5 });
-    if (ws[totalCell]) ws[totalCell].z = '#,##0.00';
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
-    XLSX.writeFile(wb, `ventas_${fechaInicio}_al_${fechaFin}.xlsx`);
   };
 
   // ── Exportar PDF (descarga automática) ────────────────────────────────────
-  const exportarPDF = () => {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const exportarPDF = async () => {
+    setExportando(true);
+    try {
+      const todas = await obtenerTodasLasVentas();
+      const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const PW    = doc.internal.pageSize.getWidth();
 
-    // Título
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(30, 30, 30);
-    doc.text('Historial de Ventas', 14, 18);
+      // Banda de encabezado
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, PW, 22, 'F');
 
-    // Subtítulo
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      `Período: ${fechaInicio}  al  ${fechaFin}   ·   ${stats.total_ventas} ventas completadas   ·   Total: ${formatCurrency(stats.monto_total)}`,
-      14, 26
-    );
+      // Título
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('Historial de Ventas', 12, 14);
 
-    // Línea separadora
-    doc.setDrawColor(220, 220, 220);
-    doc.line(14, 29, 283, 29);
+      // Período (derecha)
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(`${fechaInicio}  –  ${fechaFin}`, PW - 12, 14, { align: 'right' });
 
-    // Tabla
-    autoTable(doc, {
-      startY: 33,
-      head: [['N° Venta', 'Fecha', 'Vendedor', 'Método de Pago', 'Estado', 'Total']],
-      body: ventas.map(v => [
-        v.numero_venta,
-        formatDateTime(v.fecha_venta),
-        v.usuario?.nombre ?? '—',
-        METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
-        ESTADO_LABELS[v.estado]     ?? v.estado,
-        formatCurrency(v.total),
-      ]),
-      foot: [['', '', '', '', 'TOTAL PERÍODO:', formatCurrency(stats.monto_total)]],
-      styles: {
-        fontSize: 9,
-        cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
-        textColor: [30, 30, 30],
-        lineColor: [230, 230, 230],
-        lineWidth: 0.1,
-      },
-      headStyles: {
-        fillColor: [243, 244, 246],
-        textColor: [75, 85, 99],
-        fontStyle: 'bold',
-        fontSize: 8,
-        halign: 'left',
-      },
-      footStyles: {
-        fillColor: [243, 244, 246],
-        textColor: [30, 30, 30],
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: { fillColor: [249, 250, 251] },
-      columnStyles: { 5: { halign: 'right', fontStyle: 'bold' } },
-      margin: { left: 14, right: 14 },
-    });
+      // Barra de resumen
+      doc.setFillColor(30, 41, 59);
+      doc.rect(0, 22, PW, 10, 'F');
+      doc.setFontSize(8);
+      doc.setTextColor(203, 213, 225);
+      doc.text(`Registros: ${todas.length}`, 12, 28.5);
+      doc.text(`Total del período: ${formatCurrency(stats.monto_total)}`, PW - 12, 28.5, { align: 'right' });
 
-    doc.save(`ventas_${fechaInicio}_al_${fechaFin}.pdf`);
+      // Tabla
+      autoTable(doc, {
+        startY: 35,
+        head: [['N° Venta', 'Fecha', 'Cajero / Vendedor', 'Método de Pago', 'Estado', 'Total']],
+        body: todas.map(v => [
+          v.numero_venta,
+          formatDateTime(v.fecha_venta),
+          v.usuario?.nombre ?? '—',
+          METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
+          ESTADO_LABELS[v.estado]      ?? v.estado,
+          formatCurrency(v.total),
+        ]),
+        foot: [['', '', '', '', 'TOTAL PERÍODO', formatCurrency(stats.monto_total)]],
+        styles: {
+          font: 'helvetica',
+          fontSize: 8.5,
+          cellPadding: { top: 3.5, bottom: 3.5, left: 5, right: 5 },
+          textColor: [30, 41, 59],
+          lineColor: [226, 232, 240],
+          lineWidth: 0.15,
+          overflow: 'linebreak',
+        },
+        headStyles: {
+          fillColor: [51, 65, 85],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'left',
+          cellPadding: { top: 4, bottom: 4, left: 5, right: 5 },
+        },
+        footStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 42, font: 'courier', fontSize: 7.5 },
+          5: { halign: 'right', fontStyle: 'bold', cellWidth: 28 },
+        },
+        margin: { left: 12, right: 12 },
+        // Número de página en footer
+        didDrawPage: ({ doc: d, pageNumber, pageCount }) => {
+          const pg = d.internal.pageSize;
+          d.setFontSize(7);
+          d.setTextColor(148, 163, 184);
+          d.text(
+            `Página ${pageNumber} de ${pageCount}   ·   SuperMercado Mapache`,
+            pg.getWidth() / 2,
+            pg.getHeight() - 5,
+            { align: 'center' }
+          );
+        },
+      });
+
+      doc.save(`ventas_${fechaInicio}_al_${fechaFin}.pdf`);
+    } catch (err) {
+      showError(err.message || 'Error al exportar PDF');
+    } finally {
+      setExportando(false);
+    }
   };
+
+  const abrirComprobante = (venta) => { setVentaSeleccionada(venta); setModalComprobanteOpen(true); };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-4 overflow-y-auto h-full pb-2">
 
       {/* ── Estadísticas ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <TarjetaStat
           icono={<ShoppingBag className="w-5 h-5 text-primary-600" />}
           fondo="bg-primary-50 dark:bg-primary-900/20"
           etiqueta={
-            estadoFiltro === 'cancelada' ? 'Ventas canceladas'        :
+            estadoFiltro === 'cancelada' ? 'Ventas canceladas'           :
             estadoFiltro === 'pendiente' ? 'Ventas pendientes (crédito)' :
             'Ventas completadas'
           }
@@ -277,259 +389,281 @@ const HistorialVentas = () => {
 
       {/* ── Filtros ── */}
       <Card className="p-4">
-        <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex flex-col gap-3">
 
-          {/* Desde */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Desde</label>
-            <input
-              type="date" value={fechaInicio}
-              onChange={e => handleFechaInicio(e.target.value)}
-              className={`px-3 py-2 text-sm border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark] ${
-                fechaError ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-dark-border'
-              }`}
-            />
-          </div>
+          {/* Fechas + selects: grid en móvil, flex en desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 items-end">
 
-          {/* Hasta */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Hasta</label>
-            <input
-              type="date" value={fechaFin}
-              onChange={e => handleFechaFin(e.target.value)}
-              className={`px-3 py-2 text-sm border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark] ${
-                fechaError ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-dark-border'
-              }`}
-            />
+            {/* Desde */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Desde</label>
+              <input
+                type="date" value={fechaInicio}
+                onChange={e => handleFechaInicio(e.target.value)}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark] ${
+                  fechaError ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-dark-border'
+                }`}
+              />
+            </div>
+
+            {/* Hasta */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Hasta</label>
+              <input
+                type="date" value={fechaFin}
+                onChange={e => handleFechaFin(e.target.value)}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark] ${
+                  fechaError ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-dark-border'
+                }`}
+              />
+            </div>
+
+            {/* Estado */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Estado</label>
+              <select
+                value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark]"
+              >
+                <option value="">Todos</option>
+                <option value="completada">Completada</option>
+                <option value="cancelada">Cancelada</option>
+                <option value="pendiente">Pendiente (crédito)</option>
+              </select>
+            </div>
+
+            {/* Método */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Método de pago</label>
+              <select
+                value={metodoPagoFiltro} onChange={e => setMetodoPagoFiltro(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark]"
+              >
+                <option value="">Todos</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="mixto">Mixto</option>
+                <option value="credito">Crédito</option>
+              </select>
+            </div>
           </div>
 
           {/* Error de rango */}
           {fechaError && (
-            <div className="w-full -mt-1">
-              <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
-                <span className="font-bold">!</span> {fechaError}
-              </p>
-            </div>
+            <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+              <span className="font-bold">!</span> {fechaError}
+            </p>
           )}
 
-          {/* Estado */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Estado</label>
-            <select
-              value={estadoFiltro} onChange={e => setEstadoFiltro(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark]"
-            >
-              <option value="">Todos</option>
-              <option value="completada">Completada</option>
-              <option value="cancelada">Cancelada</option>
-              <option value="pendiente">Pendiente (crédito)</option>
-            </select>
-          </div>
-
-          {/* Método */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Método de pago</label>
-            <select
-              value={metodoPagoFiltro} onChange={e => setMetodoPagoFiltro(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 dark:[color-scheme:dark]"
-            >
-              <option value="">Todos</option>
-              <option value="efectivo">Efectivo</option>
-              <option value="tarjeta">Tarjeta</option>
-              <option value="transferencia">Transferencia</option>
-              <option value="mixto">Mixto</option>
-              <option value="credito">Crédito</option>
-            </select>
-          </div>
-
-          {/* Búsqueda por N° */}
-          <div className="flex flex-col gap-1 flex-1 min-w-44">
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Buscar N° venta</label>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text" value={search}
-                onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleBuscar()}
-                placeholder="VENTA-202505-…"
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-              />
+          {/* Búsqueda + botones */}
+          <div className="flex gap-2 items-end">
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Buscar N° venta</label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text" value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleBuscar()}
+                  placeholder="VENTA-202505-…"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
+            <Button onClick={handleBuscar} disabled={loading || !!fechaError} className="shrink-0">
+              <Search size={15} />
+              <span className="hidden sm:inline">Buscar</span>
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={exportarExcel}
+              disabled={paginacion.total === 0 || !!fechaError || exportando}
+              title="Exportar a Excel"
+              className="shrink-0"
+            >
+              <FileSpreadsheet size={15} />
+              <span className="hidden sm:inline">{exportando ? 'Exportando…' : 'Excel'}</span>
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={exportarPDF}
+              disabled={paginacion.total === 0 || !!fechaError || exportando}
+              title="Exportar a PDF"
+              className="shrink-0"
+            >
+              <FileText size={15} />
+              <span className="hidden sm:inline">{exportando ? 'Exportando…' : 'PDF'}</span>
+            </Button>
           </div>
-
-          {/* Acciones */}
-          <Button onClick={handleBuscar} disabled={loading || !!fechaError}>
-            <Search size={15} />
-            Buscar
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={exportarExcel}
-            disabled={ventas.length === 0 || !!fechaError}
-            title="Exportar a Excel (.csv)"
-          >
-            <FileSpreadsheet size={15} />
-            Excel
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={exportarPDF}
-            disabled={ventas.length === 0 || !!fechaError}
-            title="Exportar a PDF"
-          >
-            <FileText size={15} />
-            PDF
-          </Button>
         </div>
       </Card>
 
-      {/* ── Tabla ── */}
+      {/* ── Contenido: tabla (desktop) + tarjetas (móvil) ── */}
       <Card className="overflow-hidden flex-1 flex flex-col min-h-0">
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-50 dark:bg-dark-hover border-b border-gray-200 dark:border-dark-border">
-                {['N° Venta', 'Fecha', 'Cliente', 'Vendedor', 'Método', 'Estado', 'Total', 'Comprobante']
-                  .map((col, i) => (
-                    <th
-                      key={col}
-                      className={`px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${
-                        i === 6 ? 'text-right' : i === 7 ? 'text-center' : 'text-left'
-                      }`}
-                    >
-                      {col}
-                    </th>
+
+        {/* Estado vacío / cargando compartido */}
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-16 gap-2 text-gray-400 dark:text-gray-500">
+            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Cargando ventas…</span>
+          </div>
+        ) : ventas.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-16">
+            <Receipt className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" />
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              No se encontraron ventas en el período seleccionado.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* ── Tabla — solo desktop ── */}
+            <div className="hidden sm:block overflow-x-auto flex-1">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-gray-50 dark:bg-dark-hover border-b border-gray-200 dark:border-dark-border">
+                    {['N° Venta', 'Fecha', 'Cliente', 'Vendedor', 'Método', 'Estado', 'Total', 'Comprobante']
+                      .map((col, i) => (
+                        <th
+                          key={col}
+                          className={`px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${
+                            i === 6 ? 'text-right' : i === 7 ? 'text-center' : 'text-left'
+                          }`}
+                        >
+                          {col}
+                        </th>
+                      ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
+                  {ventas.map(venta => (
+                    <tr key={venta.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover/60 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-2 py-0.5 rounded text-gray-700 dark:text-gray-300">
+                          {venta.numero_venta}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-xs">
+                        {formatDateTime(venta.fecha_venta)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                        {venta.metodo_pago === 'credito'
+                          ? <span className="italic text-amber-600 dark:text-amber-400">Ver créditos</span>
+                          : <span>General</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300 text-sm">
+                        {venta.usuario?.nombre ?? '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.metodo_pago] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_CHIP[venta.estado] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {ESTADO_LABELS[venta.estado] ?? venta.estado}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                        {formatCurrency(venta.total)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => abrirComprobante(venta)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors border border-primary-200 dark:border-primary-800"
+                        >
+                          <Eye size={13} />
+                          Ver
+                        </button>
+                      </td>
+                    </tr>
                   ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-gray-400 dark:text-gray-500">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-sm">Cargando ventas…</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : ventas.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center">
-                    <Receipt className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-500 dark:text-gray-400">
-                      No se encontraron ventas en el período seleccionado.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                ventas.map(venta => (
-                  <tr
-                    key={venta.id}
-                    className="hover:bg-gray-50 dark:hover:bg-dark-hover/60 transition-colors"
-                  >
-                    {/* N° Venta */}
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-2 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                        {venta.numero_venta}
-                      </span>
-                    </td>
+                </tbody>
+              </table>
+            </div>
 
-                    {/* Fecha */}
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-xs">
-                      {formatDateTime(venta.fecha_venta)}
-                    </td>
+            {/* ── Tarjetas — solo móvil ── */}
+            <div className="sm:hidden divide-y divide-gray-100 dark:divide-dark-border overflow-y-auto flex-1">
+              {ventas.map(venta => (
+                <div key={venta.id} className="p-4 hover:bg-gray-50 dark:hover:bg-dark-hover/40 transition-colors">
+                  {/* Fila superior: N° venta + Total */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-2 py-1 rounded text-gray-700 dark:text-gray-300 leading-tight">
+                      {venta.numero_venta}
+                    </span>
+                    <span className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                      {formatCurrency(venta.total)}
+                    </span>
+                  </div>
 
-                    {/* Cliente */}
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                      {venta.metodo_pago === 'credito'
-                        ? <span className="italic text-amber-600 dark:text-amber-400">Ver créditos</span>
-                        : <span>General</span>
-                      }
-                    </td>
+                  {/* Fila media: fecha + vendedor */}
+                  <div className="flex items-center justify-between gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{formatDateTime(venta.fecha_venta)}</span>
+                    <span className="truncate text-right">{venta.usuario?.nombre ?? '—'}</span>
+                  </div>
 
-                    {/* Vendedor */}
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300 text-sm">
-                      {venta.usuario?.nombre ?? '—'}
-                    </td>
-
-                    {/* Método */}
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        METODO_CHIP[venta.metodo_pago] ?? 'bg-gray-100 text-gray-600'
-                      }`}>
+                  {/* Fila inferior: badges + botón */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.metodo_pago] ?? 'bg-gray-100 text-gray-600'}`}>
                         {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
                       </span>
-                    </td>
-
-                    {/* Estado */}
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        ESTADO_CHIP[venta.estado] ?? 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_CHIP[venta.estado] ?? 'bg-gray-100 text-gray-600'}`}>
                         {ESTADO_LABELS[venta.estado] ?? venta.estado}
                       </span>
-                    </td>
-
-                    {/* Total */}
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                      {formatCurrency(venta.total)}
-                    </td>
-
-                    {/* Comprobante */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => { setVentaSeleccionada(venta); setModalComprobanteOpen(true); }}
-                        title="Ver comprobante"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors border border-primary-200 dark:border-primary-800"
-                      >
-                        <Eye size={13} />
-                        Ver
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <button
+                      onClick={() => abrirComprobante(venta)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors border border-primary-200 dark:border-primary-800 shrink-0"
+                    >
+                      <Eye size={13} />
+                      Ver
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* ── Paginación ── */}
-        {paginacion.totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-dark-border flex items-center justify-between gap-4 flex-shrink-0">
+        {paginacion.totalPages > 1 && !loading && (
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-dark-border flex items-center justify-between gap-2 flex-shrink-0">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Mostrando{' '}
-              {(paginacion.page - 1) * LIMIT + 1}–
-              {Math.min(paginacion.page * LIMIT, paginacion.total)}{' '}
-              de <span className="font-semibold text-gray-700 dark:text-gray-300">{paginacion.total}</span> ventas
+              <span className="hidden sm:inline">Mostrando </span>
+              {(paginacion.page - 1) * LIMIT + 1}–{Math.min(paginacion.page * LIMIT, paginacion.total)}
+              {' '}de{' '}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">{paginacion.total}</span>
             </span>
 
-            <div className="flex items-center gap-1">
-              <BtnPagina
-                onClick={() => cargarVentas(paginacion.page - 1)}
-                disabled={paginacion.page === 1 || loading}
-              >
+            {/* Móvil: solo flechas + página actual */}
+            <div className="flex sm:hidden items-center gap-2">
+              <BtnPagina onClick={() => cargarVentas(paginacion.page - 1)} disabled={paginacion.page === 1 || loading}>
                 <ChevronLeft size={15} />
               </BtnPagina>
+              <span className="text-xs text-gray-600 dark:text-gray-400 px-1">
+                {paginacion.page} / {paginacion.totalPages}
+              </span>
+              <BtnPagina onClick={() => cargarVentas(paginacion.page + 1)} disabled={paginacion.page === paginacion.totalPages || loading}>
+                <ChevronRight size={15} />
+              </BtnPagina>
+            </div>
 
+            {/* Desktop: paginación completa con números */}
+            <div className="hidden sm:flex items-center gap-1">
+              <BtnPagina onClick={() => cargarVentas(paginacion.page - 1)} disabled={paginacion.page === 1 || loading}>
+                <ChevronLeft size={15} />
+              </BtnPagina>
               {paginasVisibles(paginacion.page, paginacion.totalPages).map((p, i) =>
                 p === '…' ? (
                   <span key={`sep-${i}`} className="px-1 text-gray-400 text-sm select-none">…</span>
                 ) : (
-                  <BtnPagina
-                    key={p}
-                    activo={p === paginacion.page}
-                    onClick={() => cargarVentas(p)}
-                    disabled={loading}
-                  >
+                  <BtnPagina key={p} activo={p === paginacion.page} onClick={() => cargarVentas(p)} disabled={loading}>
                     {p}
                   </BtnPagina>
                 )
               )}
-
-              <BtnPagina
-                onClick={() => cargarVentas(paginacion.page + 1)}
-                disabled={paginacion.page === paginacion.totalPages || loading}
-              >
+              <BtnPagina onClick={() => cargarVentas(paginacion.page + 1)} disabled={paginacion.page === paginacion.totalPages || loading}>
                 <ChevronRight size={15} />
               </BtnPagina>
             </div>
@@ -545,10 +679,7 @@ const HistorialVentas = () => {
         size="md"
       >
         {ventaSeleccionada && (
-          <ReciboVenta
-            venta={ventaSeleccionada}
-            sinAcciones
-          />
+          <ReciboVenta venta={ventaSeleccionada} sinAcciones />
         )}
       </Modal>
     </div>

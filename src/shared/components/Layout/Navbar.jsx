@@ -28,7 +28,7 @@ const Navbar = ({ onToggleSidebar }) => {
             {/* Ocultar texto en móvil pequeño, mostrar en tablet */}
             <div className="hidden sm:block">
               <h1 className="font-bold text-gray-800 dark:text-white text-lg">
-                SuperMercado Mapache
+                SuperMapache
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Sistema de Gestión

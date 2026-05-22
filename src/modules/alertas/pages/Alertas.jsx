@@ -29,7 +29,7 @@ const prioridadConfig = {
 
 const Alertas = () => {
   const { showSuccess, showError } = useNotification();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
   const [alertas, setAlertas]     = useState([]);
@@ -122,7 +122,7 @@ const Alertas = () => {
           <Button variant="secondary" onClick={handleMarcarTodasLeidas}>
             <CheckCheck size={16} className="mr-1.5" /> Leer todas
           </Button>
-          {hasPermission('gestionar_configuracion') && (
+          {user?.rol?.nombre === 'administrador' && (
             <Button onClick={handleGenerar} loading={generando}>
               <RefreshCw size={16} className="mr-1.5" /> Generar ahora
             </Button>
@@ -218,7 +218,7 @@ const Alertas = () => {
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{alerta.mensaje}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {new Date(alerta.created_at).toLocaleString('es-EC')}
+                      {new Date(alerta.createdAt).toLocaleString('es-EC')}
                     </p>
                   </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import inventarioService from '../services/inventario.service';
 import categoriaService from '../../categorias/services/categoria.service';
@@ -28,14 +28,27 @@ import FormularioAjuste from '../components/FormularioAjuste';
 import DetallesLote from '../components/DetallesLote';
 import { formatCurrency, formatDate } from '../../../shared/utils/formatters';
 
+const computarEstadoLote = (lote) => {
+  if (!lote.fecha_caducidad || lote.estado === 'agotado') return lote.estado;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fechaCad = new Date(lote.fecha_caducidad);
+  fechaCad.setHours(0, 0, 0, 0);
+  if (fechaCad <= hoy) return 'vencido';
+  return lote.estado;
+};
+
 const Inventario = () => {
     const { showSuccess, showError } = useNotification();
     const [vista, setVista] = useState('resumen'); // 'resumen' | 'lotes' | 'alertas'
     const [resumen, setResumen] = useState([]);
     const [lotes, setLotes] = useState([]);
     const [categorias, setCategorias] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const searchTimer = useRef(null);
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
@@ -45,8 +58,17 @@ const Inventario = () => {
 
     useEffect(() => {
         cargarCategorias();
+    }, []);
+
+    useEffect(() => {
+        clearTimeout(searchTimer.current);
+        searchTimer.current = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+        return () => clearTimeout(searchTimer.current);
+    }, [searchTerm]);
+
+    useEffect(() => {
         cargarDatos();
-    }, [vista, filtroCategoria, searchTerm, filtroEstado]);
+    }, [vista, filtroCategoria, debouncedSearch, filtroEstado]);
 
     const cargarCategorias = async () => {
         try {
@@ -64,13 +86,13 @@ const Inventario = () => {
             if (vista === 'resumen') {
                 const response = await inventarioService.getResumen({
                     categoria_id: filtroCategoria,
-                    search: searchTerm
+                    search: debouncedSearch
                 });
                 setResumen(response.data);
             } else if (vista === 'lotes') {
                 const response = await inventarioService.getLotes({
                     categoria_id: filtroCategoria,
-                    search: searchTerm,
+                    search: debouncedSearch,
                     estado: filtroEstado
                 });
                 setLotes(response.data);
@@ -82,6 +104,7 @@ const Inventario = () => {
             showError(error.message || 'Error al cargar datos');
         } finally {
             setLoading(false);
+            setInitialLoading(false);
         }
     };
 
@@ -143,7 +166,7 @@ const Inventario = () => {
         valor_total: resumen.reduce((sum, p) => sum + (p.stock_actual * p.precio_venta), 0)
     };
 
-    if (loading && resumen.length === 0 && lotes.length === 0) {
+    if (initialLoading) {
         return <Loading message="Cargando inventario..." />;
     }
 
@@ -496,75 +519,79 @@ const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar }) => {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {lotes.map((lote) => (
-                <Card key={lote.id} className="p-6 hover:shadow-lg transition-all">
-                    <div className="flex items-start justify-between mb-4">
-                        <div>
-                            <h3 className="font-semibold text-gray-800 dark:text-white">
-                                {lote.producto.nombre}
-                            </h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Lote: {lote.numero_lote}
-                            </p>
-                        </div>
-                        <EstadoLoteBadge estado={lote.estado} />
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Stock Actual:</span>
-                            <span className="font-bold text-gray-900 dark:text-white">
-                                {lote.cantidad_actual} {lote.producto.unidad_medida}
-                            </span>
+            {lotes.map((lote) => {
+                const estadoEfectivo = computarEstadoLote(lote);
+                return (
+                    <Card key={lote.id} className="p-6 hover:shadow-lg transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 className="font-semibold text-gray-800 dark:text-white">
+                                    {lote.producto.nombre}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Lote: {lote.numero_lote}
+                                </p>
+                            </div>
+                            <EstadoLoteBadge estado={estadoEfectivo} />
                         </div>
 
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Stock Inicial:</span>
-                            <span className="text-gray-700 dark:text-gray-300">
-                                {lote.cantidad_inicial}
-                            </span>
-                        </div>
-
-                        {lote.fecha_caducidad && (
+                        <div className="space-y-3 mb-4">
                             <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">Caducidad:</span>
-                                <span className={`font-medium ${lote.estado === 'vencido' ? 'text-red-600' :
-                                        lote.estado === 'por_vencer' ? 'text-orange-600' :
-                                            'text-gray-700 dark:text-gray-300'
-                                    }`}>
-                                    {formatDate(lote.fecha_caducidad)}
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Stock Actual:</span>
+                                <span className="font-bold text-gray-900 dark:text-white">
+                                    {lote.cantidad_actual} {lote.producto.unidad_medida}
                                 </span>
                             </div>
-                        )}
 
-                        {lote.ubicacion && (
                             <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">Ubicación:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Stock Inicial:</span>
                                 <span className="text-gray-700 dark:text-gray-300">
-                                    {lote.ubicacion}
+                                    {lote.cantidad_inicial}
                                 </span>
                             </div>
-                        )}
-                    </div>
 
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => onVerDetalle(lote)}
-                            className="flex-1 py-2 px-3 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors flex items-center justify-center gap-2 text-blue-700 dark:text-blue-400"
-                        >
-                            <Eye size={16} />
-                            <span className="text-sm">Ver</span>
-                        </button>
-                        <button
-                            onClick={() => onAjustar(lote)}
-                            className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-dark-hover dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300"
-                        >
-                            <Edit2 size={16} />
-                            <span className="text-sm">Ajustar</span>
-                        </button>
-                    </div>
-                </Card>
-            ))}
+                            {lote.fecha_caducidad && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Caducidad:</span>
+                                    <span className={`font-medium ${
+                                        estadoEfectivo === 'vencido' ? 'text-red-600' :
+                                        estadoEfectivo === 'por_vencer' ? 'text-orange-600' :
+                                        'text-gray-700 dark:text-gray-300'
+                                    }`}>
+                                        {formatDate(lote.fecha_caducidad)}
+                                    </span>
+                                </div>
+                            )}
+
+                            {lote.ubicacion && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Ubicación:</span>
+                                    <span className="text-gray-700 dark:text-gray-300">
+                                        {lote.ubicacion}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => onVerDetalle(lote)}
+                                className="flex-1 py-2 px-3 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors flex items-center justify-center gap-2 text-blue-700 dark:text-blue-400"
+                            >
+                                <Eye size={16} />
+                                <span className="text-sm">Ver</span>
+                            </button>
+                            <button
+                                onClick={() => onAjustar(lote)}
+                                className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 dark:bg-dark-hover dark:hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300"
+                            >
+                                <Edit2 size={16} />
+                                <span className="text-sm">Ajustar</span>
+                            </button>
+                        </div>
+                    </Card>
+                );
+            })}
         </div>
     );
 };
