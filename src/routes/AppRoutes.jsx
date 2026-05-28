@@ -40,6 +40,9 @@ const AppRoutes = () => {
         {/* Ruta pública - Login */}
         <Route path="/login" element={<Login />} />
 
+        {/* Ruta catch-all global → redirige al login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+
         {/* Rutas protegidas */}
         <Route
           path="/"
