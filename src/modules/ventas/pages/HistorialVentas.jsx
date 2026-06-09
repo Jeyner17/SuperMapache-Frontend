@@ -1,7 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import ventaService from '../services/venta.service';
 import Card from '../../../shared/components/UI/Card';
@@ -155,6 +152,7 @@ const HistorialVentas = () => {
     try {
       const todas = await obtenerTodasLasVentas();
 
+      const { default: ExcelJS } = await import('exceljs');
       const wb = new ExcelJS.Workbook();
       wb.creator = 'SuperMapache';
       const ws = wb.addWorksheet('Ventas', { views: [{ showGridLines: false }] });
@@ -263,6 +261,8 @@ const HistorialVentas = () => {
     setExportando(true);
     try {
       const todas = await obtenerTodasLasVentas();
+      const { default: jsPDF }    = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
       const doc   = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const PW    = doc.internal.pageSize.getWidth();
 

@@ -5,7 +5,6 @@ import Button from '../../../shared/components/UI/Button';
 import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
-import Loading from '../../../shared/components/UI/Loading';
 import {
   Plus,
   Search,
@@ -28,8 +27,7 @@ import DetallesProveedor from '../components/DetallesProveedor';
 const Proveedores = () => {
   const { showSuccess, showError } = useNotification();
   const [proveedores, setProveedores] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef(null);
   const [filtroTipo, setFiltroTipo] = useState('');
@@ -52,7 +50,6 @@ const Proveedores = () => {
 
   const cargarProveedores = async () => {
     try {
-      setLoading(true);
       const response = await proveedorService.getAll({
         search: debouncedSearch,
         tipo_proveedor: filtroTipo
@@ -60,8 +57,6 @@ const Proveedores = () => {
       setProveedores(response.data);
     } catch (error) {
       showError(error.message || 'Error al cargar proveedores');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -123,10 +118,6 @@ const Proveedores = () => {
       showError(error.message || 'Error al guardar proveedor');
     }
   };
-
-  if (loading && proveedores.length === 0 && !searchTerm && !filtroTipo) {
-    return <Loading message="Cargando proveedores..." />;
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -236,11 +227,7 @@ const Proveedores = () => {
       </Card>
 
       {/* Grid de proveedores */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-        </div>
-      ) : proveedores.length === 0 ? (
+      {proveedores.length === 0 ? (
         <Card className="p-12 text-center">
           <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">

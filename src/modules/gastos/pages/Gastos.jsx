@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import Card from '../../../shared/components/UI/Card';
 import Button from '../../../shared/components/UI/Button';
 import Modal from '../../../shared/components/UI/Modal';
@@ -162,6 +160,8 @@ const Gastos = () => {
   const exportarPDF = async () => {
     setExportandoPDF(true);
     try {
+      const { jsPDF }              = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
       // Trae todos los registros del filtro actual sin paginación
       const res  = await gastoService.getGastos(buildFiltros({ page: 1, limit: 10000 }));
       const todos = res.data.gastos;

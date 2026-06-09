@@ -5,7 +5,6 @@ import Button from '../../../shared/components/UI/Button';
 import Card from '../../../shared/components/UI/Card';
 import Modal from '../../../shared/components/UI/Modal';
 import Badge from '../../../shared/components/UI/Badge';
-import Loading from '../../../shared/components/UI/Loading';
 import {
   Plus,
   Edit,
@@ -22,8 +21,7 @@ import FormularioCategoria from '../components/FormularioCategoria';
 const Categorias = () => {
   const { showSuccess, showError } = useNotification();
   const [categorias, setCategorias] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [selectedCategoria, setSelectedCategoria] = useState(null);
@@ -38,14 +36,10 @@ const Categorias = () => {
 
   const cargarCategorias = async () => {
     try {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 300));
       const response = await categoriaService.getAll();
       setCategorias(response.data);
     } catch (error) {
       showError(error.message || 'Error al cargar categorías');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -114,20 +108,13 @@ const Categorias = () => {
     }
   };
 
-  const handleChangeView = async (newView) => {
+  const handleChangeView = (newView) => {
     setViewMode(newView);
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setLoading(false);
   };
 
   const filteredCategorias = categorias.filter(cat =>
     cat.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  if (loading) {
-    return <Loading message="Cargando categorías..." />;
-  }
 
   return (
     <div className="space-y-6 animate-fade-in">
