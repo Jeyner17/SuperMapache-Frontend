@@ -8,7 +8,7 @@ class ProductoService {
     const params = new URLSearchParams();
     
     params.append('page', filters.page || 1);
-    params.append('limit', filters.limit || 10);
+    params.append('limit', filters.limit || 12);
     
     if (filters.activo !== undefined) {
       params.append('activo', filters.activo);
@@ -61,10 +61,17 @@ class ProductoService {
   }
 
   /**
-   * Eliminar producto
+   * Eliminar producto (soft delete — lo desactiva)
    */
   async delete(id) {
     return await api.delete(`/productos/${id}`);
+  }
+
+  /**
+   * Reactivar producto inactivo
+   */
+  async reactivate(id) {
+    return await api.put(`/productos/${id}/reactivar`);
   }
 }
 

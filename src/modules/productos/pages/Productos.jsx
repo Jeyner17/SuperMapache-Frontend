@@ -16,8 +16,8 @@ import {
   Package,
   Eye,
   BarChart3,
-  AlertCircle,
-  DollarSign,
+  CheckCircle,
+  XCircle,
   AlertTriangle
 } from 'lucide-react';
 import FormularioProducto from '../components/FormularioProducto';
@@ -46,9 +46,13 @@ const Productos = () => {
     total: 0,
     totalPages: 0
   });
+  const [filtroActivo, setFiltroActivo] = useState('true');
+  const [stats, setStats] = useState({ activos: 0, inactivos: 0 });
+  const [reactivando, setReactivando] = useState(false);
 
   useEffect(() => {
     cargarCategorias();
+    cargarStats();
   }, []);
 
   // Debounce: espera 300ms tras el último teclazo antes de buscar
@@ -63,7 +67,7 @@ const Productos = () => {
 
   useEffect(() => {
     cargarProductos();
-  }, [pagination.page, filtroCategoria, debouncedSearch]);
+  }, [pagination.page, filtroCategoria, debouncedSearch, filtroActivo]);
 
   const cargarCategorias = async () => {
     try {
@@ -74,12 +78,28 @@ const Productos = () => {
     }
   };
 
+  const cargarStats = async () => {
+    try {
+      const [resActivos, resInactivos] = await Promise.all([
+        productoService.getAll({ activo: 'true', limit: 1 }),
+        productoService.getAll({ activo: 'false', limit: 1 })
+      ]);
+      setStats({
+        activos: resActivos.data.pagination.total,
+        inactivos: resInactivos.data.pagination.total
+      });
+    } catch {
+      // stats no críticas
+    }
+  };
+
   const cargarProductos = async () => {
     try {
       setLoading(true);
       const response = await productoService.getAll({
         page: pagination.page,
         limit: pagination.limit,
+        activo: filtroActivo,
         categoria_id: filtroCategoria,
         search: debouncedSearch
       });
@@ -130,11 +150,11 @@ const Productos = () => {
     try {
       setDeleting(true);
       await productoService.delete(productoToDelete.id);
-      showSuccess('Producto eliminado exitosamente');
+      showSuccess('Producto desactivado exitosamente');
       setDeleteModalOpen(false);
       setProductoToDelete(null);
       setVerificacion(null);
-      await cargarProductos();
+      await Promise.all([cargarProductos(), cargarStats()]);
     } catch (error) {
       showError(error.message || 'Error al eliminar producto');
     } finally {
@@ -158,7 +178,7 @@ const Productos = () => {
         showSuccess('Producto actualizado exitosamente');
       }
       setModalOpen(false);
-      cargarProductos();
+      await Promise.all([cargarProductos(), cargarStats()]);
     } catch (error) {
       showError(error.message || 'Error al guardar producto');
     }
@@ -168,7 +188,25 @@ const Productos = () => {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
-  if (loading && productos.length === 0 && !searchTerm && !filtroCategoria) {
+  const handleFiltroActivo = (value) => {
+    setFiltroActivo(value);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handleReactivate = async (producto) => {
+    setReactivando(true);
+    try {
+      await productoService.reactivate(producto.id);
+      showSuccess(`"${producto.nombre}" reactivado exitosamente`);
+      await Promise.all([cargarProductos(), cargarStats()]);
+    } catch (error) {
+      showError(error.message || 'Error al reactivar producto');
+    } finally {
+      setReactivando(false);
+    }
+  };
+
+  if (loading && productos.length === 0 && !searchTerm && !filtroCategoria && filtroActivo === 'true') {
     return <Loading message="Cargando productos..." />;
   }
 
@@ -198,7 +236,7 @@ const Productos = () => {
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Total Productos</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                {pagination.total}
+                {stats.activos + stats.inactivos}
               </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
@@ -221,30 +259,30 @@ const Productos = () => {
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer" onClick={() => handleFiltroActivo('true')}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Stock Bajo</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Activos</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                0
+                {stats.activos}
               </p>
             </div>
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-orange-600" />
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 cursor-pointer" onClick={() => handleFiltroActivo('false')}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Valor Total</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Inactivos</p>
               <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                $0.00
+                {stats.inactivos}
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-purple-600" />
+            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+              <XCircle className="w-6 h-6 text-orange-600" />
             </div>
           </div>
         </Card>
@@ -266,7 +304,7 @@ const Productos = () => {
           </div>
 
           {/* Filtro por categoría */}
-          <div className="sm:w-64">
+          <div className="sm:w-56">
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
@@ -278,6 +316,19 @@ const Productos = () => {
                   {cat.nombre}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Filtro por estado */}
+          <div className="sm:w-40">
+            <select
+              value={filtroActivo}
+              onChange={(e) => handleFiltroActivo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="true">Activos</option>
+              <option value="false">Inactivos</option>
+              <option value="">Todos</option>
             </select>
           </div>
         </div>
@@ -295,7 +346,7 @@ const Productos = () => {
             No hay productos
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {searchTerm || filtroCategoria
+            {searchTerm || filtroCategoria || filtroActivo !== 'true'
               ? 'No se encontraron productos con los filtros aplicados'
               : 'Comienza agregando tu primer producto'}
           </p>
@@ -314,6 +365,8 @@ const Productos = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onView={handleView}
+                onReactivate={handleReactivate}
+                reactivando={reactivando}
               />
             ))}
           </div>
@@ -420,8 +473,8 @@ const Productos = () => {
 
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             {verificacion && !verificacion.puedeEliminar
-              ? 'No se puede eliminar'
-              : '¿Eliminar producto?'}
+              ? 'No se puede desactivar'
+              : '¿Desactivar producto?'}
           </h3>
 
           {/* Chip del producto */}
@@ -452,7 +505,7 @@ const Productos = () => {
             /* Bloqueos */
             <div className="w-full mb-6 space-y-2 text-left">
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-3">
-                Este producto no puede eliminarse por las siguientes razones:
+                Este producto no puede desactivarse por la siguiente razón:
               </p>
               {verificacion.tieneStock && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
@@ -467,23 +520,10 @@ const Productos = () => {
                   </div>
                 </div>
               )}
-              {verificacion.tieneVentas && (
-                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-                  <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-orange-800 dark:text-orange-300">
-                      Tiene ventas registradas
-                    </p>
-                    <p className="text-xs text-orange-600 dark:text-orange-400">
-                      {verificacion.totalVentas} {verificacion.totalVentas === 1 ? 'venta registrada' : 'ventas registradas'}. No se puede eliminar por integridad de datos.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Esta acción no se puede deshacer. Se eliminará el producto y toda su información.
+              El producto quedará inactivo y no aparecerá en el catálogo ni en el POS. Puedes reactivarlo en cualquier momento.
             </p>
           )}
 
@@ -493,7 +533,7 @@ const Productos = () => {
               disabled={deleting}
               className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-dark-border text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-dark-hover transition-colors disabled:opacity-50"
             >
-              {verificacion && !verificacion.puedeEliminar ? 'Cerrar' : 'Cancelar'}
+              {verificacion && !verificacion.puedeEliminar ? 'Entendido' : 'Cancelar'}
             </button>
             {(!verificacion || verificacion.puedeEliminar) && (
               <button
@@ -504,12 +544,12 @@ const Productos = () => {
                 {deleting ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Eliminando...
+                    Desactivando...
                   </>
                 ) : (
                   <>
-                    <Trash2 size={16} />
-                    Sí, eliminar
+                    <XCircle size={16} />
+                    Sí, desactivar
                   </>
                 )}
               </button>
@@ -522,11 +562,11 @@ const Productos = () => {
 };
 
 // Componente para tarjeta de producto
-const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
+const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reactivando }) => {
   const margen = parseFloat(producto.margen_ganancia) || 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all">
+    <Card className={`overflow-hidden hover:shadow-lg transition-all ${!producto.activo ? 'opacity-60' : ''}`}>
       {/* Imagen */}
       <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
         {producto.imagen ? (
@@ -542,7 +582,16 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
             <Package size={64} className="text-gray-400" />
           </div>
         )}
-        
+
+        {/* Overlay inactivo */}
+        {!producto.activo && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="px-3 py-1 rounded-full bg-gray-800/70 text-white text-xs font-semibold tracking-wide">
+              INACTIVO
+            </span>
+          </div>
+        )}
+
         {/* Badge de caducidad */}
         {producto.requiere_caducidad && (
           <div className="absolute top-2 right-2">
@@ -554,8 +603,8 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
 
         {/* Badge de categoría */}
         <div className="absolute top-2 left-2">
-          <Badge 
-            variant="primary" 
+          <Badge
+            variant="primary"
             size="sm"
             className="backdrop-blur-sm bg-white/90 dark:bg-gray-900/90"
           >
@@ -569,7 +618,7 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
         <h3 className="font-semibold text-gray-800 dark:text-white mb-1 truncate">
           {producto.nombre}
         </h3>
-        
+
         {producto.descripcion && (
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
             {producto.descripcion}
@@ -622,12 +671,25 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView }) => {
             <Edit size={16} />
             <span className="text-sm">Editar</span>
           </button>
-          <button
-            onClick={() => onDelete(producto)}
-            className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors flex items-center justify-center text-red-700 dark:text-red-400"
-          >
-            <Trash2 size={16} />
-          </button>
+          {producto.activo ? (
+            <button
+              onClick={() => onDelete(producto)}
+              className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors flex items-center justify-center text-red-700 dark:text-red-400"
+              title="Desactivar producto"
+            >
+              <XCircle size={16} />
+            </button>
+          ) : (
+            <button
+              onClick={() => onReactivate(producto)}
+              disabled={reactivando}
+              className="py-2 px-3 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 rounded-lg transition-colors flex items-center justify-center gap-1 text-green-700 dark:text-green-400 disabled:opacity-50"
+              title="Reactivar producto"
+            >
+              <CheckCircle size={16} />
+              <span className="text-xs">Activar</span>
+            </button>
+          )}
         </div>
       </div>
     </Card>
