@@ -29,8 +29,8 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
   useEffect(() => {
     if (initialData) {
       setFormData({
-        razon_social: initialData.razon_social || '',
-        nombre_comercial: initialData.nombre_comercial || '',
+        razon_social: initialData.razonSocial || '',
+        nombre_comercial: initialData.nombreComercial || '',
         ruc: initialData.ruc || '',
         email: initialData.email || '',
         telefono: initialData.telefono || '',
@@ -38,13 +38,13 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
         direccion: initialData.direccion || '',
         ciudad: initialData.ciudad || '',
         pais: initialData.pais || 'Ecuador',
-        contacto_nombre: initialData.contacto_nombre || '',
-        contacto_telefono: initialData.contacto_telefono || '',
-        contacto_email: initialData.contacto_email || '',
-        tipo_proveedor: initialData.tipo_proveedor || 'productos',
+        contacto_nombre: initialData.contactoNombre || '',
+        contacto_telefono: initialData.contactoTelefono || '',
+        contacto_email: initialData.contactoEmail || '',
+        tipo_proveedor: initialData.tipoProveedor || 'productos',
         calificacion: initialData.calificacion || 0,
-        dias_credito: initialData.dias_credito || 0,
-        limite_credito: initialData.limite_credito || 0,
+        dias_credito: initialData.diasCredito || 0,
+        limite_credito: initialData.limiteCredito || 0,
         notas: initialData.notas || '',
         activo: initialData.activo !== undefined ? initialData.activo : true
       });
@@ -116,10 +116,23 @@ const FormularioProveedor = ({ mode, initialData, onSubmit, onCancel }) => {
     setLoading(true);
     try {
       const dataToSend = {
-        ...formData,
+        razonSocial: formData.razon_social,
+        ...(formData.nombre_comercial && { nombreComercial: formData.nombre_comercial }),
+        ...(formData.ruc && { ruc: formData.ruc }),
+        ...(formData.email && { email: formData.email }),
+        ...(formData.telefono && { telefono: formData.telefono }),
+        ...(formData.celular && { celular: formData.celular }),
+        ...(formData.direccion && { direccion: formData.direccion }),
+        ...(formData.ciudad && { ciudad: formData.ciudad }),
+        ...(formData.pais && { pais: formData.pais }),
+        ...(formData.contacto_nombre && { contactoNombre: formData.contacto_nombre }),
+        ...(formData.contacto_telefono && { contactoTelefono: formData.contacto_telefono }),
+        ...(formData.contacto_email && { contactoEmail: formData.contacto_email }),
+        tipoProveedor: formData.tipo_proveedor || 'productos',
         calificacion: parseFloat(formData.calificacion) || 0,
-        dias_credito: parseInt(formData.dias_credito) || 0,
-        limite_credito: parseFloat(formData.limite_credito) || 0
+        diasCredito: parseInt(formData.dias_credito) || 0,
+        limiteCredito: parseFloat(formData.limite_credito) || 0,
+        ...(formData.notas && { notas: formData.notas }),
       };
 
       await onSubmit(dataToSend);

@@ -78,8 +78,16 @@ const Gastos = () => {
         gastoService.getGastos(params),
         gastoService.getResumen()
       ]);
-      setGastos(resGastos.data.gastos);
-      setPagination(resGastos.data.pagination);
+      const payload = resGastos.data;
+      setGastos(Array.isArray(payload) ? payload : (payload?.data || []));
+      if (!Array.isArray(payload)) {
+        setPagination(prev => ({
+          ...prev,
+          total: payload?.total ?? prev.total,
+          totalPages: payload?.totalPages ?? prev.totalPages,
+          page: payload?.page ?? prev.page,
+        }));
+      }
       setResumen(resResumen.data);
     } catch {
       showError('Error al cargar los gastos');

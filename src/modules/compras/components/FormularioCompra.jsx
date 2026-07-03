@@ -43,7 +43,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
       if (proveedor) {
         setFormData(prev => ({
           ...prev,
-          dias_credito: proveedor.dias_credito || 0
+          dias_credito: proveedor.diasCredito || 0
         }));
       }
     }
@@ -57,15 +57,9 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
         limit: 20
       });
 
-      let productosEncontrados = [];
-
-      if (response.data) {
-        if (response.data.productos && Array.isArray(response.data.productos)) {
-          productosEncontrados = response.data.productos;
-        } else if (Array.isArray(response.data)) {
-          productosEncontrados = response.data;
-        }
-      }
+      const productosEncontrados = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.data || []);
 
       setProductos(productosEncontrados);
 
@@ -99,7 +93,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
       producto_id: producto.id,
       producto_nombre: producto.nombre,
       cantidad: 1,
-      precio_unitario: producto.precio_costo || 0,
+      precio_unitario: producto.precioCosto || producto.precio_costo || 0,
       porcentaje_iva: 12,
       numero_lote_proveedor: '',
       fecha_caducidad: ''
@@ -174,18 +168,17 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
     setLoading(true);
     try {
       const dataToSend = {
-        ...formData,
-        proveedor_id: parseInt(formData.proveedor_id),
-        descuento: parseFloat(formData.descuento) || 0,
-        dias_credito: parseInt(formData.dias_credito) || 0,
-        productos: productosSeleccionados.map(item => ({
-          producto_id: item.producto_id,
+        proveedorId: parseInt(formData.proveedor_id),
+        fechaCompra: formData.fecha_compra,
+        ...(formData.notas && { notas: formData.notas }),
+        detalles: productosSeleccionados.map(item => ({
+          productoId: item.producto_id,
           cantidad: parseFloat(item.cantidad),
-          precio_unitario: parseFloat(item.precio_unitario),
-          porcentaje_iva: parseFloat(item.porcentaje_iva) || 0,
-          numero_lote_proveedor: item.numero_lote_proveedor || null,
-          fecha_caducidad: item.fecha_caducidad || null
-        }))
+          precioUnitario: parseFloat(item.precio_unitario),
+          porcentajeIva: parseFloat(item.porcentaje_iva) || 0,
+          ...(item.numero_lote_proveedor && { numeroLote: item.numero_lote_proveedor }),
+          ...(item.fecha_caducidad && { fechaCaducidad: item.fecha_caducidad }),
+        })),
       };
 
       await onSubmit(dataToSend);
@@ -219,7 +212,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
               <option value="">Seleccionar proveedor...</option>
               {proveedores.map(prov => (
                 <option key={prov.id} value={prov.id}>
-                  {prov.razon_social}
+                  {prov.razonSocial}
                 </option>
               ))}
             </select>

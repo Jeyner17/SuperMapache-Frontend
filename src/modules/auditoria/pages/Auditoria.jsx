@@ -50,8 +50,16 @@ const Auditoria = () => {
       if (filterDesde)  params.fecha_desde = filterDesde;
       if (filterHasta)  params.fecha_hasta = filterHasta;
       const res = await auditoriaService.getAuditorias(params);
-      setRegistros(res.data.registros);
-      setPagination(res.data.pagination);
+      const payload = res.data;
+      setRegistros(Array.isArray(payload) ? payload : (payload?.data || []));
+      if (!Array.isArray(payload)) {
+        setPagination(prev => ({
+          ...prev,
+          total: payload?.total ?? prev.total,
+          totalPages: payload?.totalPages ?? prev.totalPages,
+          page: payload?.page ?? prev.page,
+        }));
+      }
     } catch {
       showError('Error al cargar auditoría');
     } finally {

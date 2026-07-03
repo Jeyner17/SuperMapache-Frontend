@@ -280,7 +280,7 @@ const Compras = () => {
           >
             <option value="">Todos los proveedores</option>
             {proveedores.map(prov => (
-              <option key={prov.id} value={prov.id}>{prov.razon_social}</option>
+              <option key={prov.id} value={prov.id}>{prov.razonSocial}</option>
             ))}
           </select>
 
@@ -356,22 +356,22 @@ const Compras = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="font-medium text-gray-900 dark:text-white">
-                            {compra.numero_compra}
+                            {compra.numeroCompra}
                           </div>
-                          {compra.numero_factura && (
+                          {compra.numeroFactura && (
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              Fact: {compra.numero_factura}
+                              Fact: {compra.numeroFactura}
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-white">
-                          {compra.proveedor?.razon_social}
+                          {compra.proveedor?.razonSocial}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(compra.fecha_compra)}
+                        {formatDate(compra.fechaCompra)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center font-medium text-gray-900 dark:text-white">
                         {formatCurrency(compra.total)}
@@ -388,12 +388,12 @@ const Compras = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <Badge variant={
-                          compra.estado_pago === 'pagado' ? 'success' :
-                          compra.estado_pago === 'pendiente' ? 'warning' :
-                          compra.estado_pago === 'vencido' ? 'danger' :
-                          compra.estado_pago === 'cancelado' ? 'danger' : 'info'
+                          compra.estadoPago === 'pagado' ? 'success' :
+                          compra.estadoPago === 'pendiente' ? 'warning' :
+                          compra.estadoPago === 'vencido' ? 'danger' :
+                          compra.estadoPago === 'cancelado' ? 'danger' : 'info'
                         }>
-                          {compra.estado_pago}
+                          {compra.estadoPago}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
