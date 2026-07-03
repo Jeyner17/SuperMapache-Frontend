@@ -9,7 +9,6 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
   const { showError } = useNotification();
   const [formData, setFormData] = useState({
     producto_id: '',
-    numero_lote: '',
     cantidad_inicial: '',
     fecha_ingreso: new Date().toISOString().split('T')[0],
     fecha_caducidad: '',
@@ -19,6 +18,17 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
   });
   const [productos, setProductos] = useState([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+
+  const lotePreview = (() => {
+    const nombre = productoSeleccionado?.nombre || '';
+    const prefix = nombre
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z]/g, '')
+      .substring(0, 3)
+      .toUpperCase() || 'XXX';
+    return `LOTE-${prefix}-SM-######`;
+  })();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef(null);
@@ -41,7 +51,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
         search: debouncedSearch,
         limit: 20
       });
-      setProductos(response.data.productos);
+      setProductos(response.data?.data || []);
     } catch (error) {
       console.error('Error al cargar productos:', error);
     }
@@ -79,15 +89,11 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
       newErrors.producto_id = 'Debe seleccionar un producto';
     }
 
-    if (!formData.numero_lote.trim()) {
-      newErrors.numero_lote = 'El número de lote es requerido';
-    }
-
     if (!formData.cantidad_inicial || parseFloat(formData.cantidad_inicial) <= 0) {
       newErrors.cantidad_inicial = 'La cantidad debe ser mayor a 0';
     }
 
-    if (productoSeleccionado?.requiere_caducidad && !formData.fecha_caducidad) {
+    if (productoSeleccionado?.requiereCaducidad && !formData.fecha_caducidad) {
       newErrors.fecha_caducidad = 'Este producto requiere fecha de caducidad';
     }
 
@@ -115,9 +121,11 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
     setLoading(true);
     try {
       const dataToSend = {
-        ...formData,
-        cantidad_inicial: parseFloat(formData.cantidad_inicial),
-        fecha_caducidad: formData.fecha_caducidad || null
+        productoId: Number(formData.producto_id),
+        cantidad: parseFloat(formData.cantidad_inicial),
+        ...(formData.fecha_caducidad && { fechaCaducidad: formData.fecha_caducidad }),
+        ...(formData.ubicacion && { ubicacion: formData.ubicacion }),
+        ...(formData.notas && { notas: formData.notas }),
       };
 
       await onSubmit(dataToSend);
@@ -143,9 +151,9 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {productoSeleccionado.categoria?.nombre}
-                  {productoSeleccionado.codigo_barras && ` • ${productoSeleccionado.codigo_barras}`}
+                  {productoSeleccionado.codigoBarras && ` • ${productoSeleccionado.codigoBarras}`}
                 </p>
-                {productoSeleccionado.requiere_caducidad && (
+                {productoSeleccionado.requiereCaducidad && (
                   <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
                     ⚠️ Requiere fecha de caducidad
                   </p>
@@ -192,7 +200,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {producto.categoria?.nombre}
-                      {producto.codigo_barras && ` • ${producto.codigo_barras}`}
+                      {producto.codigoBarras && ` • ${producto.codigoBarras}`}
                     </p>
                   </button>
                 ))}
@@ -209,15 +217,22 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
       </div>
 
       {/* Número de Lote */}
-      <Input
-        label="Número de Lote"
-        name="numero_lote"
-        value={formData.numero_lote}
-        onChange={handleChange}
-        error={errors.numero_lote}
-        required
-        placeholder="LOTE-2026-001"
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Número de Lote
+        </label>
+        <div className="flex items-center gap-2 w-full rounded-lg border px-4 py-2.5 bg-gray-50 dark:bg-dark-card border-gray-300 dark:border-dark-border">
+          <span className="font-mono text-sm text-gray-600 dark:text-gray-300 flex-1">
+            {lotePreview}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium whitespace-nowrap">
+            Auto
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+          Se generará automáticamente al guardar
+        </p>
+      </div>
 
       {/* Cantidad Inicial */}
       <Input
@@ -248,7 +263,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           label={
             <span>
               Fecha de Caducidad
-              {productoSeleccionado?.requiere_caducidad
+              {productoSeleccionado?.requiereCaducidad
                 ? <span className="text-red-500 ml-1">*</span>
                 : <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs font-normal">(opcional)</span>
               }
@@ -259,7 +274,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           value={formData.fecha_caducidad}
           onChange={handleChange}
           error={errors.fecha_caducidad}
-          required={!!productoSeleccionado?.requiere_caducidad}
+          required={!!productoSeleccionado?.requiereCaducidad}
           min={new Date().toISOString().split('T')[0]}
         />
       </div>

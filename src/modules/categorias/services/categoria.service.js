@@ -7,8 +7,8 @@ class CategoriaService {
   async getAll(filters = {}) {
     const params = new URLSearchParams();
     
-    if (filters.activo !== undefined) {
-      params.append('activo', filters.activo);
+    if (filters.soloActivas !== undefined) {
+      params.append('soloActivas', filters.soloActivas);
     }
     
     if (filters.search) {

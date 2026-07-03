@@ -175,7 +175,7 @@ const Empleados = () => {
         departamento: filtroDpto,
         activo: mostrarInactivos ? undefined : true,
       });
-      setEmpleados(res.data || []);
+      setEmpleados(Array.isArray(res.data) ? res.data : (res.data?.data || []));
     } catch (err) {
       showError(err.message || 'Error al cargar empleados');
     } finally {

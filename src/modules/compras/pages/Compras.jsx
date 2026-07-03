@@ -62,7 +62,8 @@ const Compras = () => {
 
   const cargarProveedores = async () => {
     try {
-      const response = await proveedorService.getAll({ activo: 1 });      setProveedores(response.data);
+      const response = await proveedorService.getAll({ activo: 1 });
+      setProveedores(Array.isArray(response.data) ? response.data : (response.data?.data || []));
     } catch (error) {
       console.error('Error al cargar proveedores:', error);
     }
@@ -79,8 +80,16 @@ const Compras = () => {
         search: searchTerm
       });
       
-      setCompras(response.data.compras);
-      setPagination(response.data.pagination);
+      const payload = response.data;
+      setCompras(Array.isArray(payload) ? payload : (payload?.data || []));
+      if (!Array.isArray(payload)) {
+        setPagination(prev => ({
+          ...prev,
+          total: payload?.total ?? prev.total,
+          totalPages: payload?.totalPages ?? prev.totalPages,
+          page: payload?.page ?? prev.page,
+        }));
+      }
     } catch (error) {
       showError(error.message || 'Error al cargar compras');
     } finally {

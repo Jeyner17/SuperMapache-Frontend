@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import FormularioProducto from '../components/FormularioProducto';
 import { formatCurrency } from '../../../shared/utils/formatters';
+import { STORAGE_URL } from '../../../shared/utils/constants';
 
 const Productos = () => {
   const { showSuccess, showError } = useNotification();
@@ -71,7 +72,7 @@ const Productos = () => {
 
   const cargarCategorias = async () => {
     try {
-      const response = await categoriaService.getAll();
+      const response = await categoriaService.getAll({ soloActivas: true });
       setCategorias(response.data);
     } catch (error) {
       console.error('Error al cargar categorías:', error);
@@ -85,8 +86,8 @@ const Productos = () => {
         productoService.getAll({ activo: 'false', limit: 1 })
       ]);
       setStats({
-        activos: resActivos.data.pagination.total,
-        inactivos: resInactivos.data.pagination.total
+        activos: resActivos.data.total,
+        inactivos: resInactivos.data.total,
       });
     } catch {
       // stats no críticas
@@ -104,8 +105,13 @@ const Productos = () => {
         search: debouncedSearch
       });
       
-      setProductos(response.data.productos);
-      setPagination(response.data.pagination);
+      setProductos(response.data.data);
+      setPagination({
+        page: response.data.page,
+        limit: response.data.limit,
+        total: response.data.total,
+        totalPages: response.data.totalPages,
+      });
     } catch (error) {
       showError(error.message || 'Error al cargar productos');
     } finally {
@@ -180,7 +186,8 @@ const Productos = () => {
       setModalOpen(false);
       await Promise.all([cargarProductos(), cargarStats()]);
     } catch (error) {
-      showError(error.message || 'Error al guardar producto');
+      const validationDetail = error.errors?.validation?.join(' | ');
+      showError(validationDetail || error.message || 'Error al guardar producto');
     }
   };
 
@@ -482,7 +489,7 @@ const Productos = () => {
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg mb-4 bg-gray-100 dark:bg-gray-800">
               {productoToDelete.imagen ? (
                 <img
-                  src={productoToDelete.imagen}
+                  src={`${STORAGE_URL}${productoToDelete.imagen}`}
                   alt={productoToDelete.nombre}
                   className="w-8 h-8 object-contain rounded flex-shrink-0"
                 />
@@ -563,7 +570,7 @@ const Productos = () => {
 
 // Componente para tarjeta de producto
 const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reactivando }) => {
-  const margen = parseFloat(producto.margen_ganancia) || 0;
+  const margen = parseFloat(producto.margenGanancia) || 0;
 
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-all ${!producto.activo ? 'opacity-60' : ''}`}>
@@ -572,7 +579,7 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reacti
         {producto.imagen ? (
           <div className="w-full h-full flex items-center justify-center pt-10">
             <img
-              src={producto.imagen}
+              src={`${STORAGE_URL}${producto.imagen}`}
               alt={producto.nombre}
               className="w-full h-full object-contain"
             />
@@ -593,7 +600,7 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reacti
         )}
 
         {/* Badge de caducidad */}
-        {producto.requiere_caducidad && (
+        {producto.requiereCaducidad && (
           <div className="absolute top-2 right-2">
             <Badge variant="warning" size="sm">
               Caducidad
@@ -630,7 +637,7 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reacti
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Precio Venta</p>
             <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
-              {formatCurrency(producto.precio_venta)}
+              {formatCurrency(producto.precioVenta)}
             </p>
           </div>
           <div className="text-right">
@@ -643,9 +650,9 @@ const ProductoCard = ({ producto, onEdit, onDelete, onView, onReactivate, reacti
 
         {/* Códigos */}
         <div className="space-y-1 mb-4">
-          {producto.codigo_barras && (
+          {producto.codigoBarras && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="font-medium">Código:</span> {producto.codigo_barras}
+              <span className="font-medium">Código:</span> {producto.codigoBarras}
             </p>
           )}
           {producto.sku && (

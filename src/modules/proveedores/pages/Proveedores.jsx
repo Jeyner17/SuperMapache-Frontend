@@ -54,7 +54,7 @@ const [searchTerm, setSearchTerm] = useState('');
         search: debouncedSearch,
         tipo_proveedor: filtroTipo
       });
-      setProveedores(response.data);
+      setProveedores(Array.isArray(response.data) ? response.data : (response.data?.data || []));
     } catch (error) {
       showError(error.message || 'Error al cargar proveedores');
     }

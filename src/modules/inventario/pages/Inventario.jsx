@@ -88,14 +88,14 @@ const Inventario = () => {
                     categoria_id: filtroCategoria,
                     search: debouncedSearch
                 });
-                setResumen(response.data);
+                setResumen(Array.isArray(response.data) ? response.data : []);
             } else if (vista === 'lotes') {
                 const response = await inventarioService.getLotes({
                     categoria_id: filtroCategoria,
                     search: debouncedSearch,
                     estado: filtroEstado
                 });
-                setLotes(response.data);
+                setLotes(Array.isArray(response.data) ? response.data : (response.data?.data || []));
             } else if (vista === 'alertas') {
                 const response = await inventarioService.getAlertas();
                 setAlertas(response.data);

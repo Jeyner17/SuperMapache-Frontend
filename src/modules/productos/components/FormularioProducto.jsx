@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import Input from '../../../shared/components/UI/Input';
 import Button from '../../../shared/components/UI/Button';
+import { STORAGE_URL } from '../../../shared/utils/constants';
 
 const IMAGE_SIZE = 400;
 const IMAGE_QUALITY = 0.8;
@@ -61,6 +62,16 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [margenGanancia, setMargenGanancia] = useState(0);
+
+  const skuPreview = (() => {
+    const prefix = (formData.nombre || '')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z]/g, '')
+      .substring(0, 3)
+      .toUpperCase();
+    return prefix.length > 0 ? `${prefix}-SM-#####` : 'XXX-SM-#####';
+  })();
   const [imageBlob, setImageBlob] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [imageRemoved, setImageRemoved] = useState(false);
@@ -71,19 +82,19 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
       setFormData({
         nombre: initialData.nombre || '',
         descripcion: initialData.descripcion || '',
-        categoria_id: initialData.categoria_id || '',
-        codigo_barras: initialData.codigo_barras || '',
+        categoria_id: initialData.categoriaId || '',
+        codigo_barras: initialData.codigoBarras || '',
         sku: initialData.sku || '',
-        precio_costo: initialData.precio_costo || '',
-        precio_venta: initialData.precio_venta || '',
-        stock_minimo: initialData.stock_minimo || 10,
-        stock_maximo: initialData.stock_maximo || 100,
-        requiere_caducidad: initialData.requiere_caducidad || false,
-        dias_alerta_caducidad: initialData.dias_alerta_caducidad || 21,
-        unidad_medida: initialData.unidad_medida || 'unidad',
+        precio_costo: initialData.precioCosto || '',
+        precio_venta: initialData.precioVenta || '',
+        stock_minimo: initialData.stockMinimo ?? 10,
+        stock_maximo: initialData.stockMaximo ?? 100,
+        requiere_caducidad: initialData.requiereCaducidad || false,
+        dias_alerta_caducidad: initialData.diasAlertaCaducidad ?? 21,
+        unidad_medida: initialData.unidadMedida || 'unidad',
         activo: initialData.activo !== undefined ? initialData.activo : true,
       });
-      setImagePreview(initialData.imagen || '');
+      setImagePreview(initialData.imagen ? `${STORAGE_URL}${initialData.imagen}` : '');
       setImageBlob(null);
       setImageRemoved(false);
     }
@@ -174,16 +185,16 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
       const data = new FormData();
       data.append('nombre', formData.nombre);
       data.append('descripcion', formData.descripcion || '');
-      data.append('categoria_id', formData.categoria_id);
-      data.append('codigo_barras', formData.codigo_barras || '');
-      data.append('sku', formData.sku || '');
-      data.append('precio_costo', parseFloat(formData.precio_costo));
-      data.append('precio_venta', parseFloat(formData.precio_venta));
-      data.append('stock_minimo', parseInt(formData.stock_minimo));
-      data.append('stock_maximo', parseInt(formData.stock_maximo));
-      data.append('requiere_caducidad', formData.requiere_caducidad);
-      data.append('dias_alerta_caducidad', parseInt(formData.dias_alerta_caducidad));
-      data.append('unidad_medida', formData.unidad_medida);
+      data.append('categoriaId', formData.categoria_id);
+      data.append('codigoBarras', formData.codigo_barras || '');
+      if (mode !== 'create') data.append('sku', formData.sku || '');
+      data.append('precioCosto', parseFloat(formData.precio_costo));
+      data.append('precioVenta', parseFloat(formData.precio_venta));
+      data.append('stockMinimo', parseInt(formData.stock_minimo));
+      data.append('stockMaximo', parseInt(formData.stock_maximo));
+      data.append('requiereCaducidad', formData.requiere_caducidad);
+      data.append('diasAlertaCaducidad', parseInt(formData.dias_alerta_caducidad));
+      data.append('unidadMedida', formData.unidad_medida);
       data.append('activo', formData.activo);
 
       if (imageBlob) {
@@ -368,14 +379,33 @@ const FormularioProducto = ({ mode, initialData, categorias, onSubmit, onCancel 
             placeholder="7891234567890"
           />
 
-          <Input
-            label="SKU (Stock Keeping Unit)"
-            name="sku"
-            value={formData.sku}
-            onChange={handleChange}
-            disabled={isViewMode}
-            placeholder="CER-PIL-330"
-          />
+          {mode === 'create' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                SKU (Stock Keeping Unit)
+              </label>
+              <div className="flex items-center gap-2 w-full rounded-lg border px-4 py-2.5 bg-gray-50 dark:bg-dark-card border-gray-300 dark:border-dark-border">
+                <span className="font-mono text-sm text-gray-600 dark:text-gray-300 flex-1">
+                  {skuPreview}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-medium whitespace-nowrap">
+                  Auto
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                Se generará automáticamente al guardar
+              </p>
+            </div>
+          ) : (
+            <Input
+              label="SKU (Stock Keeping Unit)"
+              name="sku"
+              value={formData.sku}
+              onChange={handleChange}
+              disabled={isViewMode}
+              placeholder="CER-PIL-330"
+            />
+          )}
         </div>
       </div>
 
