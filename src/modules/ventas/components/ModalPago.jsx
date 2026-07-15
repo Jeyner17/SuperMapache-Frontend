@@ -55,7 +55,7 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
     setBuscandoClientes(true);
     try {
       const res = await api.get('/creditos/clientes', { params: { search: query, limit: 5 } });
-      setClienteResultados(res?.data?.clientes ?? res?.clientes ?? []);
+      setClienteResultados(res?.data?.data ?? []);
     } catch {
       setClienteResultados([]);
     } finally {
@@ -73,18 +73,19 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
     ? Math.max(0, (parseFloat(montoRecibido) || 0) - total)
     : 0;
 
-  // Validación de límite de crédito
-  const creditoDisponible = clienteSeleccionado
-    ? parseFloat(clienteSeleccionado.limite_credito) - parseFloat(clienteSeleccionado.saldo_pendiente)
-    : 0;
-  const excedeLimite = metodoPago === 'credito' && clienteSeleccionado !== null && total > creditoDisponible;
+  // Validación de límite de crédito (0 = sin límite)
+  const limiteCredito   = parseFloat(clienteSeleccionado?.limiteCredito  ?? 0);
+  const saldoPendiente  = parseFloat(clienteSeleccionado?.saldoPendiente ?? 0);
+  const tieneLimite     = limiteCredito > 0;
+  const creditoDisponible = tieneLimite ? limiteCredito - saldoPendiente : null; // null = sin límite
+  const excedeLimite = metodoPago === 'credito' && clienteSeleccionado !== null && tieneLimite && total > (creditoDisponible ?? 0);
 
   // Desglose mixto
   const efectivoMixto      = Math.min(parseFloat(montoEfectivo) || 0, total);
   const montoTransferencia = Math.max(0, total - efectivoMixto);
 
   const montoEsValido = metodoPago === 'credito'
-    ? clienteSeleccionado !== null && !excedeLimite
+    ? clienteSeleccionado !== null && !excedeLimite && clienteSeleccionado.activo !== false
     : metodoPago === 'mixto'
       ? montoEfectivo !== '' && parseFloat(montoEfectivo) >= 0 && parseFloat(montoEfectivo) <= total
       : (parseFloat(montoRecibido) || 0) >= total;
@@ -192,7 +193,7 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
                         {cliente.nombre}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {cliente.cedula} — Límite: {formatCurrency(cliente.limite_credito)}
+                        {cliente.cedula || '—'} — Límite: {parseFloat(cliente.limiteCredito) > 0 ? formatCurrency(cliente.limiteCredito) : 'Sin límite'}
                       </p>
                     </button>
                   ))
@@ -216,10 +217,10 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
                       {clienteSeleccionado.nombre}
                     </p>
                     <p className={`text-xs ${excedeLimite ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                      Límite: {formatCurrency(clienteSeleccionado.limite_credito)} &nbsp;·&nbsp;
-                      Pendiente: {formatCurrency(clienteSeleccionado.saldo_pendiente)} &nbsp;·&nbsp;
+                      Límite: {tieneLimite ? formatCurrency(limiteCredito) : 'Sin límite'} &nbsp;·&nbsp;
+                      Pendiente: {formatCurrency(saldoPendiente)} &nbsp;·&nbsp;
                       <span className="font-semibold">
-                        Disponible: {formatCurrency(creditoDisponible)}
+                        Disponible: {creditoDisponible !== null ? formatCurrency(creditoDisponible) : '∞'}
                       </span>
                     </p>
                   </div>

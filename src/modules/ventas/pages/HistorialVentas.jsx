@@ -80,8 +80,8 @@ const HistorialVentas = () => {
         ...(metodoPagoFiltro && { metodo_pago: metodoPagoFiltro }),
         ...(search           && { search }),
       });
-      setVentas(res.data?.ventas ?? []);
-      setPaginacion(prev => ({ ...prev, ...res.data?.pagination, page }));
+      setVentas(res.data?.data ?? []);
+      setPaginacion(prev => ({ ...prev, page, total: res.data?.total ?? 0, totalPages: res.data?.totalPages ?? 1 }));
     } catch (err) {
       showError(err.message || 'Error al cargar ventas');
     } finally {
@@ -208,11 +208,11 @@ const HistorialVentas = () => {
       const ROW_BASE = 'FFFFFFFF';
       todas.forEach((v, idx) => {
         const row = ws.addRow([
-          v.numero_venta,
-          formatDateTime(v.fecha_venta),
+          v.numeroVenta,
+          formatDateTime(v.fechaVenta ?? v.createdAt),
           v.usuario?.nombre ?? '—',
-          METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
-          ESTADO_LABELS[v.estado]     ?? v.estado,
+          METODO_LABELS[v.tipoPago] ?? v.tipoPago,
+          ESTADO_LABELS[v.estado]   ?? v.estado,
           parseFloat(v.total),
         ]);
         row.height = 18;
@@ -295,11 +295,11 @@ const HistorialVentas = () => {
         startY: 35,
         head: [['N° Venta', 'Fecha', 'Cajero / Vendedor', 'Método de Pago', 'Estado', 'Total']],
         body: todas.map(v => [
-          v.numero_venta,
-          formatDateTime(v.fecha_venta),
+          v.numeroVenta,
+          formatDateTime(v.fechaVenta ?? v.createdAt),
           v.usuario?.nombre ?? '—',
-          METODO_LABELS[v.metodo_pago] ?? v.metodo_pago,
-          ESTADO_LABELS[v.estado]      ?? v.estado,
+          METODO_LABELS[v.tipoPago] ?? v.tipoPago,
+          ESTADO_LABELS[v.estado]   ?? v.estado,
           formatCurrency(v.total),
         ]),
         foot: [['', '', '', '', 'TOTAL PERÍODO', formatCurrency(stats.monto_total)]],
@@ -540,14 +540,14 @@ const HistorialVentas = () => {
                     <tr key={venta.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover/60 transition-colors">
                       <td className="px-4 py-3">
                         <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-2 py-0.5 rounded text-gray-700 dark:text-gray-300">
-                          {venta.numero_venta}
+                          {venta.numeroVenta}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap text-xs">
-                        {formatDateTime(venta.fecha_venta)}
+                        {formatDateTime(venta.fechaVenta ?? venta.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                        {venta.metodo_pago === 'credito'
+                        {venta.tipoPago === 'credito'
                           ? <span className="italic text-amber-600 dark:text-amber-400">Ver créditos</span>
                           : <span>General</span>}
                       </td>
@@ -555,8 +555,8 @@ const HistorialVentas = () => {
                         {venta.usuario?.nombre ?? '—'}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.metodo_pago] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.tipoPago] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {METODO_LABELS[venta.tipoPago] ?? venta.tipoPago}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -589,7 +589,7 @@ const HistorialVentas = () => {
                   {/* Fila superior: N° venta + Total */}
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-2 py-1 rounded text-gray-700 dark:text-gray-300 leading-tight">
-                      {venta.numero_venta}
+                      {venta.numeroVenta}
                     </span>
                     <span className="text-base font-bold text-gray-900 dark:text-white whitespace-nowrap">
                       {formatCurrency(venta.total)}
@@ -598,15 +598,15 @@ const HistorialVentas = () => {
 
                   {/* Fila media: fecha + vendedor */}
                   <div className="flex items-center justify-between gap-2 mb-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>{formatDateTime(venta.fecha_venta)}</span>
+                    <span>{formatDateTime(venta.fechaVenta ?? venta.createdAt)}</span>
                     <span className="truncate text-right">{venta.usuario?.nombre ?? '—'}</span>
                   </div>
 
                   {/* Fila inferior: badges + botón */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.metodo_pago] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${METODO_CHIP[venta.tipoPago] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {METODO_LABELS[venta.tipoPago] ?? venta.tipoPago}
                       </span>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ESTADO_CHIP[venta.estado] ?? 'bg-gray-100 text-gray-600'}`}>
                         {ESTADO_LABELS[venta.estado] ?? venta.estado}

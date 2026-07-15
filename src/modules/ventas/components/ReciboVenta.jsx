@@ -130,13 +130,13 @@ const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">N° Venta:</span>
             <span className="font-semibold font-mono text-gray-900 dark:text-white text-xs">
-              {venta.numero_venta}
+              {venta.numeroVenta}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500 dark:text-gray-400">Fecha:</span>
             <span className="text-gray-900 dark:text-white text-xs">
-              {formatDateTime(venta.fecha_venta)}
+              {formatDateTime(venta.fechaVenta ?? venta.createdAt)}
             </span>
           </div>
           <div className="flex justify-between">
@@ -148,24 +148,24 @@ const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
           <div className="flex justify-between items-center">
             <span className="text-gray-500 dark:text-gray-400">Pago:</span>
             <Badge variant="info" size="sm">
-              {METODO_LABELS[venta.metodo_pago] ?? venta.metodo_pago}
+              {METODO_LABELS[venta.tipoPago] ?? venta.tipoPago}
             </Badge>
           </div>
 
           {/* Desglose efectivo + transferencia para pago mixto */}
-          {venta.metodo_pago === 'mixto' &&
-            (parseFloat(venta.monto_efectivo) > 0 || parseFloat(venta.monto_transferencia) > 0) && (
+          {venta.tipoPago === 'mixto' &&
+            (parseFloat(venta.montoEfectivo) > 0 || parseFloat(venta.montoTransferencia) > 0) && (
             <div className="ml-2 pl-2 border-l-2 border-gray-200 dark:border-dark-border space-y-0.5">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-400 dark:text-gray-500">└ Efectivo:</span>
                 <span className="text-gray-700 dark:text-gray-300">
-                  {formatCurrency(venta.monto_efectivo)}
+                  {formatCurrency(venta.montoEfectivo)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-400 dark:text-gray-500">└ Transferencia:</span>
                 <span className="text-gray-700 dark:text-gray-300">
-                  {formatCurrency(venta.monto_transferencia)}
+                  {formatCurrency(venta.montoTransferencia)}
                 </span>
               </div>
             </div>
@@ -188,9 +188,9 @@ const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                   <span>
-                    {detalle.cantidad} × {formatCurrency(detalle.precio_unitario)}
+                    {detalle.cantidad} × {formatCurrency(detalle.precioUnitario)}
                   </span>
-                  <span className="font-mono">{detalle.producto?.codigo_barras}</span>
+                  <span className="font-mono">{detalle.producto?.codigoBarras}</span>
                 </div>
               </div>
             ))}
@@ -220,15 +220,15 @@ const ReciboVenta = ({ venta, onNuevaVenta, sinAcciones = false }) => {
         </div>
 
         {/* Cambio (solo efectivo) */}
-        {venta.metodo_pago === 'efectivo' && (
+        {venta.tipoPago === 'efectivo' && (
           <div className="mt-2 pt-2 border-t border-gray-200 dark:border-dark-border space-y-1">
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Recibido:</span>
-              <span className="text-gray-900 dark:text-white">{formatCurrency(venta.monto_recibido)}</span>
+              <span className="text-gray-900 dark:text-white">{formatCurrency(venta.montoRecibido)}</span>
             </div>
             <div className="flex justify-between font-semibold">
               <span className="text-gray-500 dark:text-gray-400">Cambio:</span>
-              <span className="text-green-600">{formatCurrency(venta.cambio)}</span>
+              <span className="text-green-600">{formatCurrency(venta.montoCambio)}</span>
             </div>
           </div>
         )}

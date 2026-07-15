@@ -9,7 +9,7 @@ const FormularioCierre = ({ turno, resumen, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const totalEsperado = resumen?.total_esperado ?? 0;
+  const totalEsperado = resumen?.totalEsperado ?? 0;
   const totalRealNum = parseFloat(totalReal) || 0;
   const diferencia = totalReal !== '' ? totalRealNum - totalEsperado : null;
 
@@ -22,7 +22,7 @@ const FormularioCierre = ({ turno, resumen, onSubmit, onCancel }) => {
     }
     setLoading(true);
     try {
-      await onSubmit({ total_real: monto, notas: notas || undefined });
+      await onSubmit({ montoFinal: monto, observaciones: notas || undefined });
     } finally {
       setLoading(false);
     }
@@ -34,19 +34,19 @@ const FormularioCierre = ({ turno, resumen, onSubmit, onCancel }) => {
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
           <p className="text-xs text-gray-500 dark:text-gray-400">Saldo Inicial</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(resumen?.saldo_inicial ?? 0)}</p>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{formatCurrency(resumen?.saldoInicial ?? 0)}</p>
         </div>
         <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
           <p className="text-xs text-gray-500 dark:text-gray-400">Ventas Efectivo</p>
-          <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatCurrency(resumen?.total_ventas_efectivo ?? 0)}</p>
+          <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatCurrency(resumen?.totalVentasEfectivo ?? 0)}</p>
         </div>
         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
           <p className="text-xs text-gray-500 dark:text-gray-400">Ingresos Manuales</p>
-          <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatCurrency(resumen?.total_ingresos ?? 0)}</p>
+          <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatCurrency(resumen?.totalIngresos ?? 0)}</p>
         </div>
         <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
           <p className="text-xs text-gray-500 dark:text-gray-400">Egresos</p>
-          <p className="text-lg font-bold text-red-700 dark:text-red-400">{formatCurrency(resumen?.total_egresos ?? 0)}</p>
+          <p className="text-lg font-bold text-red-700 dark:text-red-400">{formatCurrency(resumen?.totalEgresos ?? 0)}</p>
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import Input from '../../../shared/components/UI/Input';
 import { Wallet } from 'lucide-react';
 
 const FormularioApertura = ({ onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({ saldo_inicial: '', notas: '' });
+  const [formData, setFormData] = useState({ montoInicial: '', observaciones: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,14 +16,14 @@ const FormularioApertura = ({ onSubmit, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const monto = parseFloat(formData.saldo_inicial);
+    const monto = parseFloat(formData.montoInicial);
     if (isNaN(monto) || monto < 0) {
       setError('Ingrese un saldo inicial válido (puede ser 0)');
       return;
     }
     setLoading(true);
     try {
-      await onSubmit({ saldo_inicial: monto, notas: formData.notas || undefined });
+      await onSubmit({ montoInicial: monto, observaciones: formData.observaciones || undefined });
     } finally {
       setLoading(false);
     }
@@ -46,10 +46,10 @@ const FormularioApertura = ({ onSubmit, onCancel }) => {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
           <input
             type="number"
-            name="saldo_inicial"
+            name="montoInicial"
             step="0.01"
             min="0"
-            value={formData.saldo_inicial}
+            value={formData.montoInicial}
             onChange={handleChange}
             placeholder="0.00"
             className={`w-full pl-8 pr-4 py-2.5 border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 ${error ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'}`}
@@ -64,8 +64,8 @@ const FormularioApertura = ({ onSubmit, onCancel }) => {
           Notas de Apertura
         </label>
         <textarea
-          name="notas"
-          value={formData.notas}
+          name="observaciones"
+          value={formData.observaciones}
           onChange={handleChange}
           rows={3}
           placeholder="Observaciones opcionales..."

@@ -84,8 +84,8 @@ const Auditoria = () => {
     const filas = registros.map(r =>
       [
         formatDateTime(getFecha(r)),
-        r.usuario_nombre || '',
-        r.usuario_rol    || '',
+        r.usuarioNombre || '',
+        r.usuarioRol    || '',
         r.accion,
         r.modulo,
         (r.descripcion || '').replace(/"/g, '""'),
@@ -190,10 +190,10 @@ const Auditoria = () => {
                           <User size={13} className="text-gray-400 flex-shrink-0" />
                           <div className="min-w-0">
                             <p className="font-medium text-gray-800 dark:text-gray-200 truncate">
-                              {r.usuario_nombre || '—'}
+                              {r.usuarioNombre || '—'}
                             </p>
-                            {r.usuario_rol && (
-                              <p className="text-xs text-gray-400 truncate">({r.usuario_rol})</p>
+                            {r.usuarioRol && (
+                              <p className="text-xs text-gray-400 truncate">({r.usuarioRol})</p>
                             )}
                           </div>
                         </div>
@@ -223,7 +223,7 @@ const Auditoria = () => {
 
                       {/* Detalle */}
                       <td className="px-4 py-3 text-center">
-                        {r.datos_extra && (
+                        {r.datosExtra && (
                           <button onClick={() => setDetalle(r)}
                             className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-dark-hover text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                             ver
@@ -261,14 +261,14 @@ const Auditoria = () => {
               <span className="font-medium text-gray-500">Fecha:</span>
               <span>{formatDateTime(getFecha(detalle))}</span>
               <span className="font-medium text-gray-500">Usuario:</span>
-              <span>{detalle.usuario_nombre} <span className="text-gray-400">({detalle.usuario_rol})</span></span>
+              <span>{detalle.usuarioNombre} <span className="text-gray-400">({detalle.usuarioRol})</span></span>
               <span className="font-medium text-gray-500">Acción:</span>
               <span className="capitalize">{detalle.accion}</span>
               <span className="font-medium text-gray-500">Módulo:</span>
               <span>{detalle.modulo}</span>
-              {detalle.referencia_id && <>
+              {detalle.referenciaId && <>
                 <span className="font-medium text-gray-500">Referencia:</span>
-                <span className="font-mono">{detalle.referencia_tipo} #{detalle.referencia_id}</span>
+                <span className="font-mono">{detalle.referenciaTipo} #{detalle.referenciaId}</span>
               </>}
               <span className="font-medium text-gray-500">IP:</span>
               <span className="font-mono">{detalle.ip || '—'}</span>
@@ -279,11 +279,11 @@ const Auditoria = () => {
                 <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-dark-hover rounded p-2">{detalle.descripcion}</p>
               </div>
             )}
-            {detalle.datos_extra && (
+            {detalle.datosExtra && (
               <div>
                 <p className="font-medium text-gray-500 mb-1">Datos extra</p>
                 <pre className="bg-gray-50 dark:bg-dark-hover rounded-lg p-3 text-xs overflow-auto max-h-64">
-                  {JSON.stringify(detalle.datos_extra, null, 2)}
+                  {JSON.stringify(detalle.datosExtra, null, 2)}
                 </pre>
               </div>
             )}

@@ -5,7 +5,7 @@ import { PackageCheck, AlertTriangle } from 'lucide-react';
 
 const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    fecha_recepcion: new Date().toISOString().split('T')[0],
+    fechaRecepcion: new Date().toISOString().split('T')[0],
     productos: [],
     notas: ''
   });
@@ -16,12 +16,14 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
 
     const productosIniciales = compra.detalles.map(detalle => ({
       detalle_id: detalle.id,
-      producto_nombre: detalle.producto?.nombre || `Producto #${detalle.producto_id}`,
-      cantidad_pedida: parseFloat(detalle.cantidad_pedida),
-      cantidad_recibida_anterior: parseFloat(detalle.cantidad_recibida),
-      cantidad_recibida: parseFloat(detalle.cantidad_pedida) - parseFloat(detalle.cantidad_recibida),
-      numero_lote_proveedor: detalle.numero_lote_proveedor || '',
-      fecha_caducidad: detalle.fecha_caducidad || '',
+      producto_nombre: detalle.producto?.nombre || `Producto #${detalle.productoId}`,
+      cantidad_pedida: parseFloat(detalle.cantidad || 0),
+      cantidad_recibida_anterior: parseFloat(detalle.cantidadRecibida || 0),
+      cantidad_recibida: parseFloat(detalle.cantidad || 0) - parseFloat(detalle.cantidadRecibida || 0),
+      numero_lote_proveedor: detalle.numeroLote || '',
+      fecha_caducidad: detalle.fechaCaducidad
+        ? new Date(detalle.fechaCaducidad).toISOString().split('T')[0]
+        : '',
       ubicacion: ''
     }));
 
@@ -33,50 +35,35 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleProductoChange = (index, field, value) => {
     const newProductos = [...formData.productos];
     newProductos[index][field] = value;
-    setFormData(prev => ({
-      ...prev,
-      productos: newProductos
-    }));
+    setFormData(prev => ({ ...prev, productos: newProductos }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setLoading(true);
     try {
       const dataToSend = {
-        fecha_recepcion: formData.fecha_recepcion,
+        fechaRecepcion: formData.fechaRecepcion,
         notas: formData.notas,
-        productos: formData.productos.map(item => ({
-          detalle_id: item.detalle_id,
-          cantidad_recibida: parseFloat(item.cantidad_recibida) || 0,
-          numero_lote_proveedor: item.numero_lote_proveedor || null,
-          fecha_caducidad: item.fecha_caducidad || null,
-          ubicacion: item.ubicacion || null
-        }))
       };
-
       await onSubmit(dataToSend);
     } finally {
       setLoading(false);
     }
   };
 
-  const totalRecibido = formData.productos.reduce((sum, item) => 
+  const totalRecibido = formData.productos.reduce((sum, item) =>
     sum + (parseFloat(item.cantidad_recibida) || 0), 0
   );
 
-  const totalPendiente = formData.productos.reduce((sum, item) => 
-    sum + (item.cantidad_pedida - item.cantidad_recibida_anterior - (parseFloat(item.cantidad_recibida) || 0)), 0
+  const totalPendiente = formData.productos.reduce((sum, item) =>
+    sum + Math.max(0, item.cantidad_pedida - item.cantidad_recibida_anterior - (parseFloat(item.cantidad_recibida) || 0)), 0
   );
 
   if (!compra?.detalles) {
@@ -98,13 +85,13 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Orden de Compra:</p>
             <p className="font-semibold text-gray-900 dark:text-white">
-              {compra.numero_compra}
+              {compra.numeroCompra}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Proveedor:</p>
             <p className="font-semibold text-gray-900 dark:text-white">
-              {compra.proveedor?.razon_social}
+              {compra.proveedor?.razonSocial}
             </p>
           </div>
           <div>
@@ -113,8 +100,8 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
             </label>
             <input
               type="date"
-              name="fecha_recepcion"
-              value={formData.fecha_recepcion}
+              name="fechaRecepcion"
+              value={formData.fechaRecepcion}
               onChange={handleChange}
               className="w-full px-4 py-2.5 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
               required
@@ -128,12 +115,12 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
           Productos
         </h3>
-        
+
         <div className="space-y-4">
           {formData.productos.map((item, index) => {
             const cantidadPendiente = item.cantidad_pedida - item.cantidad_recibida_anterior;
             const cantidadActual = parseFloat(item.cantidad_recibida) || 0;
-            
+
             return (
               <div
                 key={index}
@@ -158,7 +145,7 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   {cantidadActual > cantidadPendiente && (
                     <div className="flex items-center gap-1 text-orange-600">
                       <AlertTriangle size={16} />
@@ -265,7 +252,7 @@ const FormularioRecepcion = ({ compra, onSubmit, onCancel }) => {
       {/* Advertencia */}
       <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
         <p className="text-sm text-yellow-800 dark:text-yellow-400">
-          ⚠️ <strong>Importante:</strong> Al recibir la mercancía se crearán automáticamente los lotes de inventario correspondientes.
+          ⚠️ <strong>Importante:</strong> Al confirmar se crearán automáticamente los lotes de inventario y el pago quedará marcado como <strong>pagado</strong>.
         </p>
       </div>
 

@@ -32,7 +32,7 @@ const FormularioMovimiento = ({ onSubmit, onCancel }) => {
     setLoading(true);
     try {
       await onSubmit({
-        tipo: formData.tipo,
+        tipo: formData.tipo === 'egreso' ? 'gasto' : formData.tipo,
         monto: parseFloat(formData.monto),
         descripcion: formData.descripcion.trim()
       });

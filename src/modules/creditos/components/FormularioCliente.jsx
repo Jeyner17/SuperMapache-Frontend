@@ -4,7 +4,7 @@ import Input from '../../../shared/components/UI/Input';
 
 const FormularioCliente = ({ cliente, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    nombre: '', cedula: '', telefono: '', email: '', direccion: '', limite_credito: '', notas: ''
+    nombre: '', cedula: '', telefono: '', email: '', direccion: '', limiteCredito: '', notas: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -18,7 +18,7 @@ const FormularioCliente = ({ cliente, onSubmit, onCancel }) => {
         telefono: cliente.telefono || '',
         email: cliente.email || '',
         direccion: cliente.direccion || '',
-        limite_credito: cliente.limite_credito ?? '',
+        limiteCredito: cliente.limiteCredito ?? '',
         notas: cliente.notas || ''
       });
     }
@@ -34,7 +34,7 @@ const FormularioCliente = ({ cliente, onSubmit, onCancel }) => {
     const newErrors = {};
     if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido';
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email inválido';
-    if (formData.limite_credito && parseFloat(formData.limite_credito) < 0) newErrors.limite_credito = 'El límite no puede ser negativo';
+    if (formData.limiteCredito && parseFloat(formData.limiteCredito) < 0) newErrors.limiteCredito = 'El límite no puede ser negativo';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -50,7 +50,7 @@ const FormularioCliente = ({ cliente, onSubmit, onCancel }) => {
         telefono: formData.telefono.trim() || undefined,
         email: formData.email.trim() || undefined,
         direccion: formData.direccion.trim() || undefined,
-        limite_credito: formData.limite_credito !== '' ? parseFloat(formData.limite_credito) : 0,
+        limiteCredito: formData.limiteCredito !== '' ? parseFloat(formData.limiteCredito) : 0,
         notas: formData.notas.trim() || undefined
       });
     } finally {
@@ -77,11 +77,11 @@ const FormularioCliente = ({ cliente, onSubmit, onCancel }) => {
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-            <input type="number" name="limite_credito" step="0.01" min="0"
-              value={formData.limite_credito} onChange={handleChange} placeholder="0 = sin límite"
-              className={`w-full pl-8 pr-4 py-2.5 border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 ${errors.limite_credito ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'}`} />
+            <input type="number" name="limiteCredito" step="0.01" min="0"
+              value={formData.limiteCredito} onChange={handleChange} placeholder="0 = sin límite"
+              className={`w-full pl-8 pr-4 py-2.5 border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 ${errors.limiteCredito ? 'border-red-500' : 'border-gray-300 dark:border-dark-border'}`} />
           </div>
-          {errors.limite_credito && <p className="mt-1 text-sm text-red-600">{errors.limite_credito}</p>}
+          {errors.limiteCredito && <p className="mt-1 text-sm text-red-600">{errors.limiteCredito}</p>}
           <p className="mt-1 text-xs text-gray-400">Deja en 0 para no establecer límite</p>
         </div>
         <div className="md:col-span-2">

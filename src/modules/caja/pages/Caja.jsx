@@ -43,8 +43,8 @@ const Caja = () => {
       setLoadingTurno(true);
       const response = await cajaService.getTurnoActivo();
       if (response.data) {
-        setTurnoActivo(response.data.turno);
-        setResumen(response.data.resumen);
+        setTurnoActivo(response.data);
+        setResumen(response.data);
       } else {
         setTurnoActivo(null);
         setResumen(null);
@@ -176,11 +176,11 @@ const Caja = () => {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{turnoActivo.numero_turno}</h2>
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">{turnoActivo.numeroTurno}</h2>
                   <Badge variant="success">Abierta</Badge>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Abierta a las {formatDateTime(turnoActivo.fecha_apertura)} · {resumen?.tiempo_abierto}
+                  Abierta a las {formatDateTime(turnoActivo.fechaApertura)}
                 </p>
               </div>
             </div>
@@ -198,28 +198,28 @@ const Caja = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-white dark:bg-dark-card rounded-lg shadow-sm">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Saldo Inicial</p>
-              <p className="text-xl font-bold text-gray-800 dark:text-white">{formatCurrency(resumen?.saldo_inicial ?? 0)}</p>
+              <p className="text-xl font-bold text-gray-800 dark:text-white">{formatCurrency(resumen?.saldoInicial ?? 0)}</p>
             </div>
             <div className="p-4 bg-white dark:bg-dark-card rounded-lg shadow-sm">
               <div className="flex items-center gap-1 mb-1">
                 <ShoppingCart size={12} className="text-green-600" />
                 <p className="text-xs text-gray-500 dark:text-gray-400">Ventas Efectivo</p>
               </div>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(resumen?.total_ventas_efectivo ?? 0)}</p>
+              <p className="text-xl font-bold text-green-600">{formatCurrency(resumen?.totalVentasEfectivo ?? 0)}</p>
             </div>
             <div className="p-4 bg-white dark:bg-dark-card rounded-lg shadow-sm">
               <div className="flex items-center gap-1 mb-1">
                 <ArrowDownCircle size={12} className="text-blue-600" />
                 <p className="text-xs text-gray-500 dark:text-gray-400">Ingresos</p>
               </div>
-              <p className="text-xl font-bold text-blue-600">{formatCurrency(resumen?.total_ingresos ?? 0)}</p>
+              <p className="text-xl font-bold text-blue-600">{formatCurrency(resumen?.totalIngresos ?? 0)}</p>
             </div>
             <div className="p-4 bg-white dark:bg-dark-card rounded-lg shadow-sm">
               <div className="flex items-center gap-1 mb-1">
                 <ArrowUpCircle size={12} className="text-red-600" />
                 <p className="text-xs text-gray-500 dark:text-gray-400">Egresos</p>
               </div>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(resumen?.total_egresos ?? 0)}</p>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(resumen?.totalEgresos ?? 0)}</p>
             </div>
           </div>
 
@@ -227,12 +227,12 @@ const Caja = () => {
           <div className="mt-4 p-4 bg-white dark:bg-dark-card rounded-lg shadow-sm flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Esperado en Caja</p>
-              <p className="text-3xl font-bold text-primary-600">{formatCurrency(resumen?.total_esperado ?? 0)}</p>
+              <p className="text-3xl font-bold text-primary-600">{formatCurrency(resumen?.totalEsperado ?? 0)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-400">Ventas tarjeta / transfer.</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {formatCurrency(resumen?.total_ventas_tarjeta ?? 0)} / {formatCurrency(resumen?.total_ventas_transferencia ?? 0)}
+                {formatCurrency(resumen?.totalVentasTarjeta ?? 0)} / {formatCurrency(resumen?.totalVentasTransferencia ?? 0)}
               </p>
             </div>
           </div>
@@ -280,14 +280,14 @@ const Caja = () => {
                     const dif = t.diferencia !== null ? parseFloat(t.diferencia) : null;
                     return (
                       <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover">
-                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white text-sm">{t.numero_turno}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white text-sm">{t.numeroTurno}</td>
                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{t.usuario?.nombre}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{formatDateTime(t.fecha_apertura)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{formatDateTime(t.fechaApertura)}</td>
                         <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                          {t.fecha_cierre ? formatDateTime(t.fecha_cierre) : '—'}
+                          {t.fechaCierre ? formatDateTime(t.fechaCierre) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-green-600">{formatCurrency(t.total_ventas_efectivo)}</td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(t.total_esperado)}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-green-600">{formatCurrency(t.totalVentasEfectivo)}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{formatCurrency(t.totalEsperado)}</td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {dif !== null ? (
                             <span className={dif === 0 ? 'text-green-600' : dif > 0 ? 'text-blue-600' : 'text-red-600'}>
@@ -296,8 +296,8 @@ const Caja = () => {
                           ) : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={t.estado === 'abierta' ? 'success' : 'default'} size="sm">
-                            {t.estado === 'abierta' ? 'Abierta' : 'Cerrada'}
+                          <Badge variant={t.estado === 'abierto' ? 'success' : 'default'} size="sm">
+                            {t.estado === 'abierto' ? 'Abierta' : 'Cerrada'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">

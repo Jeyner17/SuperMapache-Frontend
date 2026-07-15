@@ -145,16 +145,12 @@ const BarcodeScanner = ({
         <Card className="p-4">
           <div className="flex items-start gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              lastScan.resultado === 'exitoso' ? 'bg-green-100 dark:bg-green-900/30' :
-              lastScan.resultado === 'no_encontrado' ? 'bg-orange-100 dark:bg-orange-900/30' :
-              'bg-red-100 dark:bg-red-900/30'
+              lastScan.encontrado ? 'bg-green-100 dark:bg-green-900/30' : 'bg-orange-100 dark:bg-orange-900/30'
             }`}>
-              {lastScan.resultado === 'exitoso' ? (
+              {lastScan.encontrado ? (
                 <CheckCircle className="w-6 h-6 text-green-600" />
-              ) : lastScan.resultado === 'no_encontrado' ? (
-                <AlertCircle className="w-6 h-6 text-orange-600" />
               ) : (
-                <XCircle className="w-6 h-6 text-red-600" />
+                <AlertCircle className="w-6 h-6 text-orange-600" />
               )}
             </div>
             <div className="flex-1">
@@ -162,11 +158,8 @@ const BarcodeScanner = ({
                 <p className="font-semibold text-gray-800 dark:text-white">
                   {lastScan.producto ? lastScan.producto.nombre : 'Producto no encontrado'}
                 </p>
-                <Badge variant={
-                  lastScan.resultado === 'exitoso' ? 'success' :
-                  lastScan.resultado === 'no_encontrado' ? 'warning' : 'danger'
-                }>
-                  {lastScan.resultado}
+                <Badge variant={lastScan.encontrado ? 'success' : 'warning'}>
+                  {lastScan.encontrado ? 'encontrado' : 'no encontrado'}
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
@@ -177,17 +170,17 @@ const BarcodeScanner = ({
                   <div>
                     <span className="text-gray-500 dark:text-gray-400">Precio: </span>
                     <span className="font-semibold text-gray-900 dark:text-white">
-                      ${lastScan.producto.precio_venta}
+                      ${lastScan.producto.precioVenta}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-500 dark:text-gray-400">Stock: </span>
                     <span className={`font-semibold ${
-                      lastScan.producto.stock_actual > lastScan.producto.stock_minimo 
-                        ? 'text-green-600' 
+                      (lastScan.producto.stockActual ?? 0) > (lastScan.producto.stockMinimo ?? 0)
+                        ? 'text-green-600'
                         : 'text-orange-600'
                     }`}>
-                      {lastScan.producto.stock_actual}
+                      {lastScan.producto.stockActual ?? 0}
                     </span>
                   </div>
                 </div>
@@ -217,11 +210,11 @@ const BarcodeScanner = ({
                     {new Date(scan.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
-                <Badge 
-                  variant={scan.resultado === 'exitoso' ? 'success' : 'warning'} 
+                <Badge
+                  variant={scan.encontrado ? 'success' : 'warning'}
                   size="sm"
                 >
-                  {scan.resultado === 'exitoso' ? '✓' : '✗'}
+                  {scan.encontrado ? '✓' : '✗'}
                 </Badge>
               </div>
             ))}

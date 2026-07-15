@@ -72,14 +72,14 @@ class CompraService {
    * Recibir mercancía
    */
   async recibir(id, data) {
-    return await api.post(`/compras/${id}/recibir`, data);
+    return await api.patch(`/compras/${id}/recibir`, data);
   }
 
   /**
    * Cancelar compra
    */
   async cancelar(id, motivo) {
-    return await api.post(`/compras/${id}/cancelar`, { motivo });
+    return await api.patch(`/compras/${id}/cancelar`, { motivo });
   }
 
   /**

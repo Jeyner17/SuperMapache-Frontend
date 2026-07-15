@@ -32,6 +32,7 @@ const POS = () => {
   const [modalConfirmVaciar, setModalConfirmVaciar] = useState(false);
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [procesando, setProcesando] = useState(false);
+  const [scannerKey, setScannerKey] = useState(0);
 
   // ── Carrito ──────────────────────────────────────────────────────────────
 
@@ -47,10 +48,10 @@ const POS = () => {
       setCarrito([...carrito, {
         producto_id: producto.id,
         nombre: producto.nombre,
-        codigo_barras: producto.codigo_barras,
-        precio_unitario: producto.precio_venta,
+        codigo_barras: producto.codigoBarras,
+        precio_unitario: producto.precioVenta,
         cantidad: 1,
-        stock_disponible: producto.stock_actual,
+        stock_disponible: producto.stockActual ?? 0,
         iva_porcentaje: 0,
       }]);
     }
@@ -139,20 +140,20 @@ const POS = () => {
     setProcesando(true);
     try {
       const dataVenta = {
-        productos: carrito.map(item => ({
-          producto_id: item.producto_id,
-          cantidad: item.cantidad,
-          iva_porcentaje: item.iva_porcentaje ?? 0,
+        tipoPago: datosPago.metodo_pago,
+        detalles: carrito.map(item => ({
+          productoId:      item.producto_id,
+          cantidad:        item.cantidad,
+          precioUnitario:  item.precio_unitario,
         })),
-        metodo_pago:    datosPago.metodo_pago,
-        monto_recibido: datosPago.monto_recibido,
-        descuento,
-        notas:      datosPago.notas,
-        cliente_id: datosPago.cliente_id,
-        dias_plazo: datosPago.dias_plazo,
+        notas: datosPago.notas,
         ...(datosPago.metodo_pago === 'mixto' && {
-          monto_efectivo:      datosPago.monto_efectivo,
-          monto_transferencia: datosPago.monto_transferencia,
+          montoEfectivo:      datosPago.monto_efectivo,
+          montoTransferencia: datosPago.monto_transferencia,
+        }),
+        ...(datosPago.metodo_pago === 'credito' && {
+          clienteId: datosPago.cliente_id,
+          diasPlazo: datosPago.dias_plazo,
         }),
       };
 
@@ -177,7 +178,7 @@ const POS = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col animate-fade-in">
+    <div className="flex flex-col animate-fade-in">
 
       {/* ── Barra de pestañas ── */}
       <div className="flex-shrink-0 flex border-b border-gray-200 dark:border-dark-border mb-4">
@@ -197,17 +198,17 @@ const POS = () => {
 
       {/* ── Pestaña: Historial ── */}
       {activeTab === 'historial' && (
-        <div className="flex-1 overflow-hidden">
+        <div>
           <HistorialVentas />
         </div>
       )}
 
       {/* ── Pestaña: POS ── */}
       {activeTab === 'pos' && (
-      <div className="flex-1 flex gap-6 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-6">
 
       {/* ── Panel Izquierdo: Escáner + Carrito ── */}
-      <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+      <div className="flex-1 flex flex-col gap-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
             Punto de Venta
@@ -219,6 +220,7 @@ const POS = () => {
 
         <div className="flex-shrink-0">
           <BarcodeScanner
+            key={scannerKey}
             onProductFound={agregarAlCarrito}
             modulo="pos"
             showHistory={false}
@@ -227,8 +229,8 @@ const POS = () => {
         </div>
 
         {/* Lista del carrito */}
-        <Card className="flex-1 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-dark-border">
+        <Card className="flex flex-col">
+          <div className="px-5 py-5 border-b border-gray-200 dark:border-dark-border">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                 <ShoppingCart size={20} />
@@ -243,7 +245,7 @@ const POS = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="p-4 lg:flex-1">
             {carrito.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
                 <ShoppingCart className="w-16 h-16 text-gray-400 mb-4" />
@@ -355,7 +357,7 @@ const POS = () => {
       </div>
 
       {/* ── Panel Derecho: Totales + Pago ── */}
-      <div className="w-96 flex flex-col gap-6">
+      <div className="w-full lg:w-96 flex flex-col gap-6">
         <Card className="p-6">
           <h3 className="font-semibold text-gray-800 dark:text-white mb-4">
             Resumen de Venta
@@ -491,6 +493,7 @@ const POS = () => {
             onNuevaVenta={() => {
               setModalReciboOpen(false);
               setVentaCompletada(null);
+              setScannerKey(k => k + 1);
             }}
           />
         )}

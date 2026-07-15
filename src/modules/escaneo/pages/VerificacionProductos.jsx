@@ -14,6 +14,7 @@ import {
   Layers
 } from 'lucide-react';
 import { formatCurrency } from '../../../shared/utils/formatters';
+import { STORAGE_URL } from '../../../shared/utils/constants';
 
 const VerificacionProductos = () => {
   const { user } = useAuth();
@@ -28,7 +29,9 @@ const VerificacionProductos = () => {
   const getStockStatus = () => {
     if (!productoActual) return null;
 
-    const { stock_actual, stock_minimo, stock_maximo } = productoActual;
+    const stock_actual = productoActual.stockActual ?? 0;
+    const stock_minimo = productoActual.stockMinimo ?? 0;
+    const stock_maximo = productoActual.stockMaximo ?? 0;
 
     if (stock_actual <= 0) {
       return {
@@ -104,7 +107,7 @@ const VerificacionProductos = () => {
                   </div>
                   {productoActual.imagen && (
                     <img
-                      src={productoActual.imagen}
+                      src={`${STORAGE_URL}${productoActual.imagen}`}
                       alt={productoActual.nombre}
                       className="w-20 h-20 object-cover rounded-lg"
                     />
@@ -117,7 +120,7 @@ const VerificacionProductos = () => {
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Precio de Venta</p>
                       <p className="text-4xl font-bold text-green-600">
-                        {formatCurrency(productoActual.precio_venta)}
+                        {formatCurrency(productoActual.precioVenta)}
                       </p>
                     </div>
                     <DollarSign className="w-12 h-12 text-green-600 opacity-50" />
@@ -133,7 +136,7 @@ const VerificacionProductos = () => {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Código de Barras</p>
                       <p className="font-mono font-semibold text-gray-900 dark:text-white">
-                        {productoActual.codigo_barras}
+                        {productoActual.codigoBarras}
                       </p>
                     </div>
                   </div>
@@ -166,10 +169,10 @@ const VerificacionProductos = () => {
                       <div className="flex items-center gap-2 mt-1">
                         {stockStatus && <stockStatus.icon size={24} className={stockStatus.color} />}
                         <span className={`text-3xl font-bold ${stockStatus?.color}`}>
-                          {productoActual.stock_actual}
+                          {productoActual.stockActual ?? 0}
                         </span>
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {productoActual.unidad_medida}
+                          {productoActual.unidadMedida}
                         </span>
                       </div>
                     </div>
@@ -184,13 +187,13 @@ const VerificacionProductos = () => {
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Mínimo: </span>
                       <span className="font-semibold text-gray-700 dark:text-gray-300">
-                        {productoActual.stock_minimo}
+                        {productoActual.stockMinimo}
                       </span>
                     </div>
                     <div>
                       <span className="text-gray-500 dark:text-gray-400">Máximo: </span>
                       <span className="font-semibold text-gray-700 dark:text-gray-300">
-                        {productoActual.stock_maximo}
+                        {productoActual.stockMaximo}
                       </span>
                     </div>
                   </div>
@@ -208,21 +211,21 @@ const VerificacionProductos = () => {
                       <div className="flex justify-between">
                         <span className="text-gray-600 dark:text-gray-400">Precio Costo:</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(productoActual.precio_costo)}
+                          {formatCurrency(productoActual.precioCosto)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600 dark:text-gray-400">Margen:</span>
                         <span className="font-semibold text-green-600">
-                          {productoActual.margen_ganancia}%
+                          {productoActual.margenGanancia}%
                         </span>
                       </div>
                     </>
                   )}
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Requiere Caducidad:</span>
-                    <Badge variant={productoActual.requiere_caducidad ? 'warning' : 'default'} size="sm">
-                      {productoActual.requiere_caducidad ? 'Sí' : 'No'}
+                    <Badge variant={productoActual.requiereCaducidad ? 'warning' : 'default'} size="sm">
+                      {productoActual.requiereCaducidad ? 'Sí' : 'No'}
                     </Badge>
                   </div>
                   <div className="flex justify-between">

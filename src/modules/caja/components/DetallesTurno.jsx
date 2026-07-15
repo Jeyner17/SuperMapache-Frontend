@@ -11,6 +11,8 @@ const tipoConfig = {
   venta_tarjeta:      { label: 'Venta (tarjeta)',    variant: 'info',    icon: ShoppingCart,    color: 'text-blue-600' },
   venta_transferencia:{ label: 'Venta (transfer.)',  variant: 'primary', icon: ShoppingCart,    color: 'text-primary-600' },
   ingreso:            { label: 'Ingreso',            variant: 'success', icon: ArrowDownCircle, color: 'text-green-600' },
+  gasto:              { label: 'Egreso',             variant: 'danger',  icon: ArrowUpCircle,   color: 'text-red-600' },
+  retiro:             { label: 'Retiro',             variant: 'danger',  icon: ArrowUpCircle,   color: 'text-red-600' },
   egreso:             { label: 'Egreso',             variant: 'danger',  icon: ArrowUpCircle,   color: 'text-red-600' },
   cierre:             { label: 'Cierre',             variant: 'warning', icon: Wallet,          color: 'text-orange-600' }
 };
@@ -18,7 +20,7 @@ const tipoConfig = {
 const FilaMovimiento = ({ mov }) => {
   const cfg = tipoConfig[mov.tipo] || tipoConfig.ingreso;
   const Icono = cfg.icon;
-  const esEgreso = mov.tipo === 'egreso';
+  const esEgreso = ['egreso', 'gasto', 'retiro'].includes(mov.tipo);
 
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-dark-hover">
@@ -50,7 +52,7 @@ const DetallesTurno = ({ turno, onClose }) => {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">Turno</p>
-          <p className="font-bold text-gray-900 dark:text-white">{turno.numero_turno}</p>
+          <p className="font-bold text-gray-900 dark:text-white">{turno.numeroTurno}</p>
         </div>
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">Cajero</p>
@@ -61,21 +63,21 @@ const DetallesTurno = ({ turno, onClose }) => {
         </div>
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">Estado</p>
-          <Badge variant={turno.estado === 'abierta' ? 'success' : 'default'}>
-            {turno.estado === 'abierta' ? 'Abierta' : 'Cerrada'}
+          <Badge variant={turno.estado === 'abierto' ? 'success' : 'default'}>
+            {turno.estado === 'abierto' ? 'Abierta' : 'Cerrada'}
           </Badge>
         </div>
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">Apertura</p>
           <div className="flex items-center gap-1">
             <Clock size={14} className="text-gray-400" />
-            <p className="text-sm text-gray-900 dark:text-white">{formatDateTime(turno.fecha_apertura)}</p>
+            <p className="text-sm text-gray-900 dark:text-white">{formatDateTime(turno.fechaApertura)}</p>
           </div>
         </div>
-        {turno.fecha_cierre && (
+        {turno.fechaCierre && (
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Cierre</p>
-            <p className="text-sm text-gray-900 dark:text-white">{formatDateTime(turno.fecha_cierre)}</p>
+            <p className="text-sm text-gray-900 dark:text-white">{formatDateTime(turno.fechaCierre)}</p>
           </div>
         )}
       </div>
@@ -83,14 +85,14 @@ const DetallesTurno = ({ turno, onClose }) => {
       {/* Resumen financiero */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Saldo Inicial',     value: turno.saldo_inicial,              color: 'text-gray-700 dark:text-gray-300' },
-          { label: 'Ventas Efectivo',   value: turno.total_ventas_efectivo,      color: 'text-green-600' },
-          { label: 'Ingresos',          value: turno.total_ingresos,             color: 'text-blue-600' },
-          { label: 'Egresos',           value: turno.total_egresos,              color: 'text-red-600' },
-          { label: 'Ventas Tarjeta',    value: turno.total_ventas_tarjeta,       color: 'text-purple-600' },
-          { label: 'Ventas Transfer.',  value: turno.total_ventas_transferencia, color: 'text-indigo-600' },
-          { label: 'Total Esperado',    value: turno.total_esperado,             color: 'text-primary-600 font-bold' },
-          { label: 'Total Real',        value: turno.total_real,                 color: 'text-primary-600 font-bold' },
+          { label: 'Saldo Inicial',     value: turno.saldoInicial,              color: 'text-gray-700 dark:text-gray-300' },
+          { label: 'Ventas Efectivo',   value: turno.totalVentasEfectivo,      color: 'text-green-600' },
+          { label: 'Ingresos',          value: turno.totalIngresos,             color: 'text-blue-600' },
+          { label: 'Egresos',           value: turno.totalEgresos,              color: 'text-red-600' },
+          { label: 'Ventas Tarjeta',    value: turno.totalVentasTarjeta,       color: 'text-purple-600' },
+          { label: 'Ventas Transfer.',  value: turno.totalVentasTransferencia, color: 'text-indigo-600' },
+          { label: 'Total Esperado',    value: turno.totalEsperado,             color: 'text-primary-600 font-bold' },
+          { label: 'Total Real',        value: turno.totalReal,                 color: 'text-primary-600 font-bold' },
         ].map(({ label, value, color }) => value !== null && value !== undefined && (
           <div key={label} className="p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
             <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>

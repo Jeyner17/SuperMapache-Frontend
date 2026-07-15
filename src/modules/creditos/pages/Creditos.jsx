@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 const estadoConfig = {
+  vigente:   { label: 'Vigente',   variant: 'success' },
   pendiente: { label: 'Pendiente', variant: 'warning' },
   parcial:   { label: 'Parcial',   variant: 'info' },
   pagado:    { label: 'Pagado',    variant: 'success' },
@@ -84,7 +85,7 @@ const Creditos = () => {
         page, limit: 15,
         search: searchCliente || undefined
       });
-      setClientes(res.data.clientes || []);
+      setClientes(res.data.data || []);
       setClientesPag({ page: res.data.page, totalPages: res.data.totalPages, total: res.data.total });
     } catch {
       showError('Error al cargar clientes');
@@ -166,17 +167,11 @@ const Creditos = () => {
     }
   };
 
-  const creditosActivos = resumen
-    ? (resumen.por_estado || [])
-        .filter(e => ['pendiente', 'parcial'].includes(e.estado))
-        .reduce((sum, e) => sum + parseInt(e.cantidad || 0, 10), 0)
-    : 0;
-
   const tarjetasResumen = resumen ? [
-    { label: 'Total Pendiente',  value: formatCurrency(resumen.total_pendiente),      color: 'text-red-600',     icon: TrendingUp },
-    { label: 'Total Vencido',    value: formatCurrency(resumen.total_vencido),         color: 'text-orange-600',  icon: AlertCircle },
-    { label: 'Clientes Activos', value: resumen.total_clientes_activos ?? 0,           color: 'text-primary-600', icon: UserCheck },
-    { label: 'Créditos Activos', value: creditosActivos,                               color: 'text-blue-600',    icon: CreditCard },
+    { label: 'Total Pendiente',  value: formatCurrency(resumen.totalPendiente ?? 0),      color: 'text-red-600',     icon: TrendingUp },
+    { label: 'Total Vencido',    value: formatCurrency(resumen.totalVencido ?? 0),         color: 'text-orange-600',  icon: AlertCircle },
+    { label: 'Clientes Activos', value: resumen.totalClientes ?? 0,                        color: 'text-primary-600', icon: UserCheck },
+    { label: 'Créditos Activos', value: resumen.totalCreditosActivos ?? 0,                 color: 'text-blue-600',    icon: CreditCard },
   ] : [];
 
   return (
@@ -242,6 +237,7 @@ const Creditos = () => {
             <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)}
               className="px-3 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-card text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500">
               <option value="">Todos los estados</option>
+              <option value="vigente">Vigente</option>
               <option value="pendiente">Pendiente</option>
               <option value="parcial">Parcial</option>
               <option value="pagado">Pagado</option>
@@ -264,16 +260,16 @@ const Creditos = () => {
                     <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">No hay créditos</td></tr>
                   ) : creditos.map(c => {
                     const cfg = estadoConfig[c.estado] || estadoConfig.pendiente;
-                    const vencido = new Date(c.fecha_vencimiento) < new Date() && c.estado !== 'pagado';
+                    const vencido = c.fechaVencimiento && new Date(c.fechaVencimiento) < new Date() && c.estado !== 'pagado';
                     return (
                       <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover">
-                        <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white whitespace-nowrap">{c.numero_credito}</td>
+                        <td className="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white whitespace-nowrap">{c.numeroCredito}</td>
                         <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{c.cliente?.nombre}</td>
-                        <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatCurrency(c.monto_total)}</td>
-                        <td className="px-4 py-3 text-green-600 whitespace-nowrap">{formatCurrency(c.monto_pagado)}</td>
-                        <td className="px-4 py-3 font-semibold text-red-600 whitespace-nowrap">{formatCurrency(c.saldo_pendiente)}</td>
+                        <td className="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatCurrency(c.montoTotal)}</td>
+                        <td className="px-4 py-3 text-green-600 whitespace-nowrap">{formatCurrency(c.montoPagado)}</td>
+                        <td className="px-4 py-3 font-semibold text-red-600 whitespace-nowrap">{formatCurrency(c.montoPendiente)}</td>
                         <td className={`px-4 py-3 whitespace-nowrap text-sm ${vencido ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
-                          {formatDate(c.fecha_vencimiento)}
+                          {c.fechaVencimiento ? formatDate(c.fechaVencimiento) : '—'}
                         </td>
                         <td className="px-4 py-3"><Badge variant={cfg.variant} size="sm">{cfg.label}</Badge></td>
                         <td className="px-4 py-3">
@@ -349,12 +345,12 @@ const Creditos = () => {
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.cedula || '—'}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.telefono || '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={`font-semibold ${parseFloat(c.saldo_pendiente) > 0 ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
-                          {formatCurrency(c.saldo_pendiente)}
+                        <span className={`font-semibold ${parseFloat(c.saldoPendiente) > 0 ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {formatCurrency(c.saldoPendiente)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                        {parseFloat(c.limite_credito) > 0 ? formatCurrency(c.limite_credito) : 'Sin límite'}
+                        {parseFloat(c.limiteCredito) > 0 ? formatCurrency(c.limiteCredito) : 'Sin límite'}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={c.activo ? 'success' : 'default'} size="sm">

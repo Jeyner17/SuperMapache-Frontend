@@ -93,8 +93,8 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
       producto_id: producto.id,
       producto_nombre: producto.nombre,
       cantidad: 1,
-      precio_unitario: producto.precioCosto || producto.precio_costo || 0,
-      porcentaje_iva: 12,
+      precio_unitario: producto.precioCosto || producto.precioVenta || 0,
+      porcentaje_iva: 0,
       numero_lote_proveedor: '',
       fecha_caducidad: ''
     }]);
@@ -310,7 +310,7 @@ const FormularioCompra = ({ proveedores, onSubmit, onCancel }) => {
                       {producto.nombre}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {producto.codigo_barras} • Precio: {formatCurrency(producto.precio_costo)}
+                      {producto.codigoBarras} • Precio: {formatCurrency(producto.precioCosto)}
                     </p>
                   </button>
                 ))}
