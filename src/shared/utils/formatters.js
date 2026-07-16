@@ -12,34 +12,29 @@ export const formatCurrency = (value, simbolo = '$') => {
 
 /**
  * Formatear fecha y hora
+ * Usa hora local para timestamps (created_at, updated_at), fecha UTC-safe para DATE puras.
  */
 export const formatDateTime = (date) => {
   if (!date) return '';
-  
   const d = new Date(date);
-  
-  const dia = String(d.getDate()).padStart(2, '0');
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const anio = d.getFullYear();
-  
-  const horas = String(d.getHours()).padStart(2, '0');
+  if (isNaN(d.getTime())) return '';
+  const dia     = String(d.getDate()).padStart(2, '0');
+  const mes     = String(d.getMonth() + 1).padStart(2, '0');
+  const anio    = d.getFullYear();
+  const horas   = String(d.getHours()).padStart(2, '0');
   const minutos = String(d.getMinutes()).padStart(2, '0');
-  
   return `${dia}/${mes}/${anio} ${horas}:${minutos}`;
 };
 
 /**
- * Formatear solo fecha
+ * Formatear solo fecha (DATE columns: YYYY-MM-DD, sin conversión de timezone)
  */
 export const formatDate = (date) => {
   if (!date) return '';
-  
-  const d = new Date(date);
-  
-  const dia = String(d.getDate()).padStart(2, '0');
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const anio = d.getFullYear();
-  
+  // Si viene como '2026-07-17' o '2026-07-17T00:00:00.000Z', extraer solo la parte de fecha
+  const str = String(date).split('T')[0]; // 'YYYY-MM-DD'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const [anio, mes, dia] = str.split('-');
   return `${dia}/${mes}/${anio}`;
 };
 

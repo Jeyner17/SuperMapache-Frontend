@@ -18,7 +18,10 @@ const METODOS = [
   { value: 'transferencia', label: 'Transferencia' },
 ];
 
-const hoy = () => new Date().toISOString().split('T')[0];
+const hoy = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const FormularioGasto = ({ gasto, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -39,8 +42,8 @@ const FormularioGasto = ({ gasto, onSubmit, onCancel }) => {
         categoria:   gasto.categoria   || '',
         descripcion: gasto.descripcion || '',
         monto:       gasto.monto       || '',
-        fecha_gasto: gasto.fecha_gasto || hoy(),
-        metodo_pago: gasto.metodo_pago || 'efectivo',
+        fecha_gasto: gasto.fechaGasto ? String(gasto.fechaGasto).split('T')[0] : hoy(),
+        metodo_pago: gasto.metodoPago  || 'efectivo',
         comprobante: gasto.comprobante || '',
         notas:       gasto.notas       || '',
       });
@@ -69,8 +72,11 @@ const FormularioGasto = ({ gasto, onSubmit, onCancel }) => {
     setLoading(true);
     try {
       await onSubmit({
-        ...formData,
-        monto: parseFloat(formData.monto),
+        categoria:   formData.categoria,
+        descripcion: formData.descripcion,
+        monto:       parseFloat(formData.monto),
+        fechaGasto:  formData.fecha_gasto,
+        metodoPago:  formData.metodo_pago,
         comprobante: formData.comprobante.trim() || undefined,
         notas:       formData.notas.trim()       || undefined,
       });

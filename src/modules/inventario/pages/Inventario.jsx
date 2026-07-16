@@ -150,8 +150,8 @@ const Inventario = () => {
 
     const handleVerificarEstados = async () => {
         try {
-            const response = await inventarioService.verificarEstados();
-            showSuccess(`${response.data.length} lotes actualizados`);
+            await inventarioService.verificarEstados();
+            showSuccess('Estados de lotes verificados correctamente');
             cargarDatos();
         } catch (error) {
             showError('Error al verificar estados');

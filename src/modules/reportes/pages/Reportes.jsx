@@ -8,8 +8,10 @@ import TabInventario from '../components/TabInventario';
 import TabCreditos   from '../components/TabCreditos';
 import reporteService from '../services/reporte.service';
 
-const today         = new Date().toISOString().split('T')[0];
-const firstOfMonth  = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+const localDate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today        = localDate();
+const firstOfMonth = localDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
 const TABS = [
   { id: 'ventas',      label: 'Ventas',      icon: BarChart3  },

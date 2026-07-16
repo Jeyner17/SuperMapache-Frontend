@@ -70,7 +70,7 @@ const TabVentas = ({ desde, hasta, agrupacion, onExportar, exporting }) => {
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={ventasPeriodo} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-              <XAxis dataKey="periodo" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="fecha" tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(v) => [formatCurrency(v), 'Ventas']} />
               <Line type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} />
@@ -100,19 +100,19 @@ const TabVentas = ({ desde, hasta, agrupacion, onExportar, exporting }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{p.nombre}</span>
-                      <span className="text-xs text-gray-500 ml-2 shrink-0">{p.cantidad_vendida} uds</span>
+                      <span className="text-xs text-gray-500 ml-2 shrink-0">{p.cantidadTotal} uds</span>
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
                       <div
                         className="h-1.5 rounded-full"
                         style={{
-                          width: `${(p.cantidad_vendida / (topProductos[0]?.cantidad_vendida || 1)) * 100}%`,
+                          width: `${(p.cantidadTotal / (topProductos[0]?.cantidadTotal || 1)) * 100}%`,
                           backgroundColor: COLORS[i % COLORS.length],
                         }}
                       />
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-gray-800 dark:text-white shrink-0">{formatCurrency(p.total_vendido)}</span>
+                  <span className="text-xs font-semibold text-gray-800 dark:text-white shrink-0">{formatCurrency(p.montoTotal)}</span>
                 </div>
               ))}
             </div>
@@ -127,7 +127,7 @@ const TabVentas = ({ desde, hasta, agrupacion, onExportar, exporting }) => {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={ventasPorCategoria} dataKey="total" nameKey="categoria" cx="50%" cy="45%" outerRadius={80}
+                <Pie data={ventasPorCategoria} dataKey="montoTotal" nameKey="categoria" cx="50%" cy="45%" outerRadius={80}
                   label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                   {ventasPorCategoria.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
@@ -150,7 +150,7 @@ const TabVentas = ({ desde, hasta, agrupacion, onExportar, exporting }) => {
                 <XAxis type="number" tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`} tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="cajero" tick={{ fontSize: 11 }} width={75} />
                 <Tooltip formatter={(v) => [formatCurrency(v), 'Total']} />
-                <Bar dataKey="total" fill="#10b981" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="totalVentas" fill="#10b981" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

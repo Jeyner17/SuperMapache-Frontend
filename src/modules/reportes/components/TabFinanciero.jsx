@@ -83,7 +83,7 @@ const TabFinanciero = ({ desde, hasta, onExportar, exporting }) => {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={datos} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="fecha" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v, n) => [formatCurrency(v), n]} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />

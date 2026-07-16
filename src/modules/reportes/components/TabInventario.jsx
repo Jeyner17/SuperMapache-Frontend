@@ -44,20 +44,20 @@ const TabInventario = ({ onExportar, exporting }) => {
   return (
     <div className="space-y-6">
       {/* KPIs de valor */}
-      {!loading && valorInventario?.resumen && (
+      {!loading && valorInventario && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="p-5 text-center">
-            <p className="text-xs text-gray-500 mb-2">Valor Total Inventario</p>
-            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(valorInventario.resumen.valor_total)}</p>
+            <p className="text-xs text-gray-500 mb-2">Valor Venta Inventario</p>
+            <p className="text-2xl font-bold text-indigo-600">{formatCurrency(valorInventario.valorVenta)}</p>
           </Card>
           <Card className="p-5 text-center">
-            <p className="text-xs text-gray-500 mb-2">Productos Únicos</p>
-            <p className="text-2xl font-bold text-gray-800 dark:text-white">{Number(valorInventario.resumen.total_productos)}</p>
+            <p className="text-xs text-gray-500 mb-2">Valor Costo Inventario</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-white">{formatCurrency(valorInventario.valorCosto)}</p>
           </Card>
           <Card className="p-5 text-center">
-            <p className="text-xs text-gray-500 mb-2">Unidades Totales</p>
+            <p className="text-xs text-gray-500 mb-2">Unidades en Stock</p>
             <p className="text-2xl font-bold text-gray-800 dark:text-white">
-              {Number(valorInventario.resumen.total_unidades).toLocaleString()}
+              {Number(valorInventario.cantidadTotal).toLocaleString()}
             </p>
           </Card>
         </div>
@@ -97,8 +97,8 @@ const TabInventario = ({ onExportar, exporting }) => {
                   {stockBajo.map((p, i) => (
                     <tr key={i}>
                       <td className="py-2 text-gray-700 dark:text-gray-300">{p.nombre}</td>
-                      <td className="py-2 text-right font-semibold text-red-600">{p.stock_actual}</td>
-                      <td className="py-2 text-right text-gray-500">{p.stock_minimo}</td>
+                      <td className="py-2 text-right font-semibold text-red-600">{p.stockActual}</td>
+                      <td className="py-2 text-right text-gray-500">{p.stockMinimo}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -133,16 +133,21 @@ const TabInventario = ({ onExportar, exporting }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {porVencer.map((p, i) => (
-                    <tr key={i}>
-                      <td className="py-2 text-gray-700 dark:text-gray-300">{p.nombre}</td>
-                      <td className="py-2 text-right text-gray-600 dark:text-gray-400">{p.cantidad}</td>
-                      <td className="py-2 text-right text-gray-500">{formatDate(p.fecha_caducidad)}</td>
-                      <td className={`py-2 text-right font-semibold ${p.dias_restantes <= 7 ? 'text-red-600' : 'text-orange-500'}`}>
-                        {p.dias_restantes}d
-                      </td>
-                    </tr>
-                  ))}
+                  {porVencer.map((p, i) => {
+                    const diasRestantes = p.fechaCaducidad
+                      ? Math.ceil((new Date(p.fechaCaducidad).getTime() - Date.now()) / 86400000)
+                      : null;
+                    return (
+                      <tr key={i}>
+                        <td className="py-2 text-gray-700 dark:text-gray-300">{p.producto?.nombre ?? '—'}</td>
+                        <td className="py-2 text-right text-gray-600 dark:text-gray-400">{p.cantidadActual}</td>
+                        <td className="py-2 text-right text-gray-500">{formatDate(p.fechaCaducidad)}</td>
+                        <td className={`py-2 text-right font-semibold ${diasRestantes !== null && diasRestantes <= 7 ? 'text-red-600' : 'text-orange-500'}`}>
+                          {diasRestantes !== null ? `${diasRestantes}d` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

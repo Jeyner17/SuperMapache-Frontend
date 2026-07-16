@@ -26,7 +26,7 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await creditoService.getClientes({ search: searchTerm, activo: true, limit: 10 });
-        setClientes(res.data.clientes || []);
+        setClientes(res.data.data || []);
         setShowDropdown(true);
       } catch { setClientes([]); }
     }, 300);
@@ -58,10 +58,12 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
     setLoading(true);
     setApiError('');
     try {
+      const venc = new Date(Date.now() + parseInt(formData.dias_plazo) * 86400000);
+      const fechaVencimiento = `${venc.getFullYear()}-${String(venc.getMonth() + 1).padStart(2, '0')}-${String(venc.getDate()).padStart(2, '0')}`;
       await onSubmit({
-        cliente_id: formData.cliente_id,
-        monto_total: parseFloat(formData.monto_total),
-        dias_plazo: parseInt(formData.dias_plazo),
+        clienteId: formData.cliente_id,
+        montoTotal: parseFloat(formData.monto_total),
+        fechaVencimiento,
         notas: formData.notas || undefined
       });
     } catch (err) {
@@ -91,8 +93,8 @@ const FormularioCredito = ({ clienteInicial, onSubmit, onCancel }) => {
                 <p className="font-medium text-gray-900 dark:text-white">{clienteSeleccionado.nombre}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {clienteSeleccionado.cedula && `CI: ${clienteSeleccionado.cedula} · `}
-                  Saldo pendiente: {formatCurrency(clienteSeleccionado.saldo_pendiente)}
-                  {parseFloat(clienteSeleccionado.limite_credito) > 0 && ` · Límite: ${formatCurrency(clienteSeleccionado.limite_credito)}`}
+                  Saldo pendiente: {formatCurrency(clienteSeleccionado.saldoPendiente)}
+                  {parseFloat(clienteSeleccionado.limiteCredito) > 0 && ` · Límite: ${formatCurrency(clienteSeleccionado.limiteCredito)}`}
                 </p>
               </div>
             </div>

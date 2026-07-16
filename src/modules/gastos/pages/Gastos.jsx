@@ -119,9 +119,9 @@ const Gastos = () => {
         await gastoService.actualizarGasto(gastoEdit.id, data);
         showSuccess('Gasto actualizado');
       } else {
-        const payload = turnoActivo ? { ...data, turno_id: turnoActivo.id } : data;
+        const payload = turnoActivo ? { ...data, turnoId: turnoActivo.id } : data;
         await gastoService.crearGasto(payload);
-        showSuccess('Gasto registrado' + (turnoActivo ? ` — vinculado al turno ${turnoActivo.numero_turno}` : ''));
+        showSuccess('Gasto registrado' + (turnoActivo ? ` — vinculado al turno ${turnoActivo.numeroTurno}` : ''));
       }
       cerrarModal();
       cargar(1);
@@ -172,7 +172,7 @@ const Gastos = () => {
       const { default: autoTable } = await import('jspdf-autotable');
       // Trae todos los registros del filtro actual sin paginación
       const res  = await gastoService.getGastos(buildFiltros({ page: 1, limit: 10000 }));
-      const todos = res.data.gastos;
+      const todos = res.data?.data ?? res.data ?? [];
 
       const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
       const fechaGen = new Date().toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -210,13 +210,11 @@ const Gastos = () => {
         startY: 44,
         head: [['N° Gasto', 'Fecha', 'Categoría', 'Descripción', 'Método', 'Monto']],
         body: todos.map(g => [
-          g.numero_gasto,
-          g.fecha_gasto
-            ? new Date(g.fecha_gasto + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })
-            : '',
+          g.numeroGasto,
+          formatDate(g.fechaGasto),
           CATEGORIAS_LABEL[g.categoria] || g.categoria,
           g.descripcion,
-          g.metodo_pago.charAt(0).toUpperCase() + g.metodo_pago.slice(1),
+          (g.metodoPago || '').charAt(0).toUpperCase() + (g.metodoPago || '').slice(1),
           `$${parseFloat(g.monto).toFixed(2)}`
         ]),
         foot: [['', '', '', '', 'TOTAL', `$${todos.reduce((s, g) => s + parseFloat(g.monto), 0).toFixed(2)}`]],
@@ -300,14 +298,14 @@ const Gastos = () => {
           <Card className="p-4 text-center">
             <TrendingDown className="mx-auto mb-2 text-red-500" size={24} />
             <p className="text-xs text-gray-500 dark:text-gray-400">Total este mes</p>
-            <p className="text-xl font-bold text-red-600">{formatCurrency(resumen.total_mes)}</p>
+            <p className="text-xl font-bold text-red-600">{formatCurrency(resumen.totalMes)}</p>
           </Card>
           <Card className="p-4 text-center">
             <Tag className="mx-auto mb-2 text-blue-500" size={24} />
             <p className="text-xs text-gray-500 dark:text-gray-400">Registros este mes</p>
             <p className="text-xl font-bold text-gray-900 dark:text-white">{resumen.cantidad}</p>
           </Card>
-          {Object.entries(resumen.por_categoria || {})
+          {Object.entries(resumen.porCategoria || {})
             .sort((a, b) => b[1] - a[1])
             .slice(0, 2)
             .map(([cat, monto]) => (
@@ -406,11 +404,11 @@ const Gastos = () => {
               <tbody className="divide-y divide-gray-100 dark:divide-dark-border">
                 {gastos.map(g => (
                   <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-dark-hover">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{g.numero_gasto}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{g.numeroGasto}</td>
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
                       <div className="flex items-center gap-1.5">
                         <Calendar size={14} className="text-gray-400" />
-                        {formatDate(g.fecha_gasto)}
+                        {formatDate(g.fechaGasto)}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -425,7 +423,7 @@ const Gastos = () => {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 text-gray-500">
                         <CreditCard size={14} />
-                        <span className="capitalize">{g.metodo_pago}</span>
+                        <span className="capitalize">{g.metodoPago}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-red-600">
@@ -486,7 +484,7 @@ const Gastos = () => {
         {!gastoEdit && turnoActivo && (
           <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 text-sm border border-yellow-200 dark:border-yellow-700">
             <Wallet size={16} />
-            <span>Se vinculará al turno activo <strong>{turnoActivo.numero_turno}</strong></span>
+            <span>Se vinculará al turno activo <strong>{turnoActivo.numeroTurno}</strong></span>
           </div>
         )}
         <FormularioGasto gasto={gastoEdit} onSubmit={handleSubmit} onCancel={cerrarModal} />
@@ -495,7 +493,7 @@ const Gastos = () => {
       {/* Modal eliminar */}
       <Modal isOpen={!!gastoElim} onClose={() => setGastoElim(null)} title="Eliminar Gasto" size="sm">
         <p className="text-gray-600 dark:text-gray-300 mb-1">
-          ¿Eliminar el gasto <strong>{gastoElim?.numero_gasto}</strong>?
+          ¿Eliminar el gasto <strong>{gastoElim?.numeroGasto}</strong>?
         </p>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{gastoElim?.descripcion}</p>
         <div className="flex justify-end gap-3">

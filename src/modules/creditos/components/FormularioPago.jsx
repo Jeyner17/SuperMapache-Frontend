@@ -14,7 +14,7 @@ const FormularioPago = ({ credito, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const saldoPendiente = parseFloat(credito?.saldo_pendiente || 0);
+  const saldoPendiente = parseFloat(credito?.montoPendiente || 0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,7 +41,7 @@ const FormularioPago = ({ credito, onSubmit, onCancel }) => {
     try {
       await onSubmit({
         monto: parseFloat(formData.monto),
-        metodo_pago: formData.metodo_pago,
+        tipoPago: formData.metodo_pago,
         notas: formData.notas.trim() || undefined
       });
     } finally {
@@ -55,7 +55,7 @@ const FormularioPago = ({ credito, onSubmit, onCancel }) => {
       <div className="p-3 bg-gray-50 dark:bg-dark-hover rounded-lg text-sm space-y-1">
         <div className="flex justify-between">
           <span className="text-gray-500 dark:text-gray-400">Crédito</span>
-          <span className="font-medium text-gray-900 dark:text-white">{credito?.numero_credito}</span>
+          <span className="font-medium text-gray-900 dark:text-white">{credito?.numeroCredito}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500 dark:text-gray-400">Cliente</span>

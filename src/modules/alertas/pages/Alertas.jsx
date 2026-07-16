@@ -7,7 +7,7 @@ import { useNotification } from '../../../shared/hooks/useNotification';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import alertaService from '../services/alerta.service';
 import {
-  Bell, CheckCheck, Check, AlertTriangle, Package,
+  Bell, Check, AlertTriangle, Package,
   Clock, CreditCard, RefreshCw, Filter
 } from 'lucide-react';
 
@@ -55,8 +55,8 @@ const Alertas = () => {
         alertaService.getAlertas(params),
         alertaService.getResumen()
       ]);
-      setAlertas(resAlertas.data.alertas || []);
-      setPagination({ page: resAlertas.data.page, totalPages: resAlertas.data.totalPages, total: resAlertas.data.total });
+      setAlertas(resAlertas.data?.data || []);
+      setPagination({ page: resAlertas.data?.page ?? 1, totalPages: resAlertas.data?.totalPages ?? 1, total: resAlertas.data?.total ?? 0 });
       setResumen(resResumen.data);
     } catch {
       showError('Error al cargar alertas');
@@ -71,7 +71,7 @@ const Alertas = () => {
     try {
       await alertaService.marcarLeida(id);
       setAlertas(prev => prev.map(a => a.id === id ? { ...a, leida: true } : a));
-      setResumen(prev => prev ? { ...prev, no_leidas: Math.max(0, prev.no_leidas - 1) } : prev);
+      setResumen(prev => prev ? { ...prev, noLeidas: Math.max(0, (prev.noLeidas ?? 0) - 1) } : prev);
     } catch { showError('Error al actualizar alerta'); }
   };
 
@@ -87,8 +87,8 @@ const Alertas = () => {
 
   const handleMarcarTodasLeidas = async () => {
     try {
-      const res = await alertaService.marcarTodasLeidas();
-      showSuccess(`${res.data.cantidad} alertas marcadas como leídas`);
+      await alertaService.marcarTodasLeidas();
+      showSuccess('Todas las alertas marcadas como leídas');
       cargar(1);
     } catch { showError('Error al actualizar alertas'); }
   };
@@ -96,18 +96,18 @@ const Alertas = () => {
   const handleGenerar = async () => {
     setGenerando(true);
     try {
-      const res = await alertaService.generarAlertas();
-      showSuccess(`${res.data.generadas} alertas generadas`);
+      await alertaService.generarAlertas();
+      showSuccess('Alertas generadas correctamente');
       cargar(1);
     } catch { showError('Error al generar alertas'); }
     finally { setGenerando(false); }
   };
 
   const tarjetasResumen = resumen ? [
-    { label: 'Sin leer',  value: resumen.no_leidas, color: 'text-primary-600', icon: Bell },
-    { label: 'Críticas',  value: resumen.criticas,  color: 'text-red-600',     icon: AlertTriangle },
-    { label: 'Altas',     value: resumen.altas,     color: 'text-orange-600',  icon: AlertTriangle },
-    { label: 'Total activas', value: resumen.total, color: 'text-gray-700 dark:text-gray-300', icon: Bell },
+    { label: 'Sin leer',      value: resumen.noLeidas, color: 'text-primary-600',                      icon: Bell },
+    { label: 'Críticas',      value: resumen.criticas, color: 'text-red-600',                           icon: AlertTriangle },
+    { label: 'Altas',         value: resumen.altas,    color: 'text-orange-600',                        icon: AlertTriangle },
+    { label: 'Total activas', value: resumen.total,    color: 'text-gray-700 dark:text-gray-300',       icon: Bell },
   ] : [];
 
   return (
@@ -119,10 +119,7 @@ const Alertas = () => {
           <p className="text-gray-500 dark:text-gray-400 text-sm">Notificaciones automáticas del sistema</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleMarcarTodasLeidas}>
-            <CheckCheck size={16} className="mr-1.5" /> Leer todas
-          </Button>
-          {user?.rol?.nombre === 'administrador' && (
+          {user?.rol === 'admin' && (
             <Button onClick={handleGenerar} loading={generando}>
               <RefreshCw size={16} className="mr-1.5" /> Generar ahora
             </Button>
