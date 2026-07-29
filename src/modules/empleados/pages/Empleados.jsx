@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit, Trash2, KeyRound, Users,
-  UserCheck, UserPlus, Briefcase, Mail, Phone, ShieldCheck, AlertTriangle
+  UserCheck, UserPlus, Briefcase, Mail, Phone, ShieldCheck, AlertTriangle,
+  CreditCard, Calendar, Building2, User
 } from 'lucide-react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import { useAuth } from '../../../shared/hooks/useAuth';
@@ -35,103 +36,151 @@ const DEPTO_LABEL = {
 };
 
 const ROL_VARIANT = {
-  administrador: 'danger',
-  supervisor:    'warning',
-  cajero:        'info',
-  empleado:      'default',
+  administrador:  'danger',
+  supervisor:     'warning',
+  cajero:         'info',
+  cajero_simple:  'info',
+  empleado:       'default',
+};
+
+const CONTRATO_LABEL = {
+  indefinido:  'Indefinido',
+  plazo_fijo:  'Plazo fijo',
+  pasantia:    'Pasantía',
 };
 
 const initials = (nombre = '') =>
   nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+
+const formatDate = (d) => {
+  if (!d) return null;
+  const dt = new Date(d);
+  return dt.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 // ── Tarjeta de empleado ───────────────────────────────────────────────────────
 
 const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onActivar, onDelete }) => {
   const { usuario, cargo, departamento } = empleado;
   const avatarBg = AVATAR_BG[departamento] || 'bg-gray-400';
+  const rolNombre = usuario?.rol?.nombre || '';
 
   return (
-    <Card className="p-5 hover:shadow-lg transition-all flex flex-col gap-4">
-      {/* Cabecera */}
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
-          {initials(usuario?.nombre)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-800 dark:text-white truncate">{usuario?.nombre}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{cargo}</p>
-        </div>
-        <Badge variant={empleado.activo ? 'success' : 'danger'} size="sm">
-          {empleado.activo ? 'Activo' : 'Inactivo'}
-        </Badge>
-      </div>
+    <Card className={`flex flex-col gap-0 hover:shadow-lg transition-all overflow-hidden ${!empleado.activo ? 'opacity-70' : ''}`}>
 
-      {/* Badges */}
-      <div className="flex flex-wrap gap-2">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${DEPTO_COLORS[departamento]}`}>
-          {DEPTO_LABEL[departamento] || departamento}
-        </span>
-        <Badge variant={ROL_VARIANT[usuario?.rol?.nombre] || 'default'} size="sm">
-          <ShieldCheck size={11} className="mr-1" />
-          {usuario?.rol?.nombre || '—'}
-        </Badge>
-      </div>
+      {/* Franja de color por departamento */}
+      <div className={`h-1.5 w-full ${avatarBg}`} />
 
-      {/* Contacto */}
-      <div className="space-y-1.5">
-        {usuario?.email && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Mail size={13} className="flex-shrink-0" />
-            <span className="truncate">{usuario.email}</span>
+      <div className="p-5 flex flex-col gap-4">
+        {/* Cabecera: avatar + nombre + estado */}
+        <div className="flex items-center gap-3">
+          <div className={`w-12 h-12 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
+            {initials(usuario?.nombre)}
           </div>
-        )}
-        {empleado.celular && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Phone size={13} className="flex-shrink-0" />
-            <span>{empleado.celular}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-gray-900 dark:text-white truncate leading-tight">{usuario?.nombre}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{cargo}</p>
           </div>
-        )}
-      </div>
+          <Badge variant={empleado.activo ? 'success' : 'danger'} size="sm">
+            {empleado.activo ? 'Activo' : 'Inactivo'}
+          </Badge>
+        </div>
 
-      {/* Acciones */}
-      <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-dark-border">
-        <button
-          onClick={() => onEdit(empleado)}
-          className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-dark-hover dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm flex items-center justify-center gap-1.5 transition-colors"
-        >
-          <Edit size={14} /> Editar
-        </button>
+        {/* Badges: departamento + rol + contrato */}
+        <div className="flex flex-wrap gap-1.5">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${DEPTO_COLORS[departamento]}`}>
+            <Building2 size={10} />
+            {DEPTO_LABEL[departamento] || departamento}
+          </span>
+          {rolNombre && (
+            <Badge variant={ROL_VARIANT[rolNombre] || 'default'} size="sm">
+              <ShieldCheck size={10} className="mr-1" />
+              {rolNombre}
+            </Badge>
+          )}
+          {empleado.tipoContrato && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              {CONTRATO_LABEL[empleado.tipoContrato] || empleado.tipoContrato}
+            </span>
+          )}
+        </div>
 
-        {isAdmin && (
-          <>
-            {empleado.activo && (
-              <button
-                onClick={() => onReset(empleado)}
-                title="Resetear contraseña"
-                className="py-2 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 transition-colors"
-              >
-                <KeyRound size={14} />
-              </button>
-            )}
-            {empleado.activo ? (
-              <button
-                onClick={() => onDelete(empleado)}
-                title="Desactivar empleado"
-                className="py-2 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 transition-colors"
-              >
-                <Trash2 size={14} />
-              </button>
-            ) : (
-              <button
-                onClick={() => onActivar(empleado)}
-                title="Activar empleado"
-                className="py-2 px-3 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
-              >
-                <UserPlus size={14} />
-              </button>
-            )}
-          </>
-        )}
+        {/* Datos de acceso + contacto */}
+        <div className="grid grid-cols-1 gap-1.5 text-sm">
+          {usuario?.username && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <User size={13} className="flex-shrink-0 text-gray-400" />
+              <span className="font-mono text-xs bg-gray-100 dark:bg-dark-hover px-1.5 py-0.5 rounded truncate">
+                @{usuario.username}
+              </span>
+            </div>
+          )}
+          {usuario?.email && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Mail size={13} className="flex-shrink-0 text-gray-400" />
+              <span className="truncate">{usuario.email}</span>
+            </div>
+          )}
+          {(empleado.celular || empleado.telefono) && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Phone size={13} className="flex-shrink-0 text-gray-400" />
+              <span>{empleado.celular || empleado.telefono}</span>
+            </div>
+          )}
+          {empleado.cedula && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <CreditCard size={13} className="flex-shrink-0 text-gray-400" />
+              <span>{empleado.cedula}</span>
+            </div>
+          )}
+          {empleado.fechaContratacion && (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <Calendar size={13} className="flex-shrink-0 text-gray-400" />
+              <span>Desde {formatDate(empleado.fechaContratacion)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Acciones */}
+        <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-dark-border">
+          <button
+            onClick={() => onEdit(empleado)}
+            className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-dark-hover dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Edit size={14} /> Editar
+          </button>
+
+          {isAdmin && (
+            <>
+              {empleado.activo && (
+                <button
+                  onClick={() => onReset(empleado)}
+                  title="Resetear contraseña"
+                  className="py-2 px-3 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 transition-colors"
+                >
+                  <KeyRound size={14} />
+                </button>
+              )}
+              {empleado.activo ? (
+                <button
+                  onClick={() => onDelete(empleado)}
+                  title="Desactivar empleado"
+                  className="py-2 px-3 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => onActivar(empleado)}
+                  title="Reactivar empleado"
+                  className="py-2 px-3 rounded-lg bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 transition-colors"
+                >
+                  <UserPlus size={14} />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Card>
   );
@@ -173,7 +222,7 @@ const Empleados = () => {
       const res = await empleadoService.getAll({
         search: debouncedSearch,
         departamento: filtroDpto,
-        activo: mostrarInactivos ? undefined : true,
+        mostrarInactivos,
       });
       setEmpleados(Array.isArray(res.data) ? res.data : (res.data?.data || []));
     } catch (err) {

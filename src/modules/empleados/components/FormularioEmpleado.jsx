@@ -202,10 +202,10 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
         <SectionTitle>Identificación</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label="Nombres" name="nombres" value={formData.nombres}
-            onChange={handleChange} error={errors.nombres} required placeholder="Ej: Jeyner Andrés" />
+            onChange={handleChange} error={errors.nombres} required placeholder="Ej: Jeyner" />
 
           <Input label="Apellidos" name="apellidos" value={formData.apellidos}
-            onChange={handleChange} error={errors.apellidos} required placeholder="Ej: Manzaba Torres" />
+            onChange={handleChange} error={errors.apellidos} required placeholder="Ej: Manzaba" />
         </div>
       </div>
 

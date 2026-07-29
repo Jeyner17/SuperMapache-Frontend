@@ -54,7 +54,7 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
     }
     setBuscandoClientes(true);
     try {
-      const res = await api.get('/creditos/clientes', { params: { search: query, limit: 5 } });
+      const res = await api.get('/creditos/clientes', { params: { search: query, limit: 5, activo: 'true' } });
       setClienteResultados(res?.data?.data ?? []);
     } catch {
       setClienteResultados([]);
@@ -234,6 +234,22 @@ const ModalPago = ({ total, onPagar, onCancelar, procesando }) => {
                     Cambiar
                   </button>
                 </div>
+
+                {/* Alerta de cliente inactivo */}
+                {clienteSeleccionado?.activo === false && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg">
+                    <AlertTriangle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                        Cliente inactivo
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                        Este cliente está desactivado y no puede recibir crédito.
+                        Selecciona otro cliente o cambia el método de pago.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Alerta de límite excedido */}
                 {excedeLimite && (

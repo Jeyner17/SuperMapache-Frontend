@@ -17,6 +17,7 @@ import {
   BarChart3,
   Tag,
   Users,
+  Zap,
   X
 } from 'lucide-react';
 
@@ -39,6 +40,7 @@ const menuItems = [
   { path: '/compras',      icon: ShoppingBag,     label: 'Compras',         color: 'text-pink-500',   roles: STAFF },
   { path: '/escaneo',      icon: Scan,            label: 'Escáner',         color: 'text-teal-500',   roles: ALL },
   { path: '/pos',          icon: Store,           label: 'Punto de Venta',  color: 'text-emerald-500',roles: [ADMIN, SUPERVISOR, CAJERO] },
+  { path: '/caja-simple',  icon: Zap,             label: 'Caja Rápida',     color: 'text-lime-500',   roles: [ADMIN, SUPERVISOR, CAJERO] },
   { path: '/caja',         icon: Wallet,          label: 'Caja',            color: 'text-yellow-500', roles: [ADMIN, SUPERVISOR, CAJERO] },
   { path: '/creditos',     icon: CreditCard,      label: 'Créditos',        color: 'text-red-500',    roles: [ADMIN, SUPERVISOR, CAJERO] },
   { path: '/gastos',       icon: Receipt,         label: 'Gastos',          color: 'text-amber-500',  roles: STAFF },

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotification } from '../../../shared/hooks/useNotification';
 import ventaService from '../services/venta.service';
+import cajaService from '../../caja/services/caja.service';
 import BarcodeScanner from '../../escaneo/components/BarcodeScanner';
 import Card from '../../../shared/components/UI/Card';
 import Button from '../../../shared/components/UI/Button';
@@ -33,6 +34,13 @@ const POS = () => {
   const [ventaCompletada, setVentaCompletada] = useState(null);
   const [procesando, setProcesando] = useState(false);
   const [scannerKey, setScannerKey] = useState(0);
+  const [turnoActivo, setTurnoActivo] = useState(null);
+
+  useEffect(() => {
+    cajaService.getTurnoActivo()
+      .then(res => { if (res.data) setTurnoActivo(res.data); })
+      .catch(() => {});
+  }, []);
 
   // ── Carrito ──────────────────────────────────────────────────────────────
 
@@ -141,12 +149,19 @@ const POS = () => {
     try {
       const dataVenta = {
         tipoPago: datosPago.metodo_pago,
+        ...(turnoActivo?.id && { turnoId: turnoActivo.id }),
         detalles: carrito.map(item => ({
           productoId:      item.producto_id,
           cantidad:        item.cantidad,
           precioUnitario:  item.precio_unitario,
         })),
         notas: datosPago.notas,
+        ...(datosPago.metodo_pago === 'efectivo' && {
+          montoEfectivo: datosPago.monto_recibido,
+        }),
+        ...(datosPago.metodo_pago === 'transferencia' && {
+          montoTransferencia: totales.total,
+        }),
         ...(datosPago.metodo_pago === 'mixto' && {
           montoEfectivo:      datosPago.monto_efectivo,
           montoTransferencia: datosPago.monto_transferencia,

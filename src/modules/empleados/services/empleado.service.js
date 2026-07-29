@@ -3,9 +3,9 @@ import api from '../../../shared/services/api.service';
 class EmpleadoService {
   async getAll(filters = {}) {
     const params = new URLSearchParams();
-    if (filters.search)      params.append('search', filters.search);
-    if (filters.departamento) params.append('departamento', filters.departamento);
-    if (filters.activo !== undefined) params.append('activo', filters.activo);
+    if (filters.search)        params.append('search', filters.search);
+    if (filters.departamento)  params.append('departamento', filters.departamento);
+    if (filters.mostrarInactivos) params.append('estado', 'todos');
     return await api.get(`/empleados?${params.toString()}`);
   }
 

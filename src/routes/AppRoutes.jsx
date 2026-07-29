@@ -21,11 +21,15 @@ import Gastos     from '../modules/gastos/pages/Gastos';
 import Auditoria  from '../modules/auditoria/pages/Auditoria';
 import Reportes   from '../modules/reportes/pages/Reportes';
 import Empleados  from '../modules/empleados/pages/Empleados';
+import CajaSimple from '../modules/caja-simple/pages/CajaSimple';
 
 // Components
 import Loading from '../shared/components/UI/Loading';
 import NotFound from '../shared/components/Common/NotFound';
 import ProtectedRoute from './ProtectedRoute';
+
+const ROLES_CAJA_SIMPLE = ['cajero_simple', 'administrador', 'supervisor', 'cajero'];
+const ROLES_EXCLUIDOS_MAIN = ['cajero_simple'];
 
 const AppRoutes = () => {
   const { loading } = useAuth();
@@ -37,50 +41,49 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta pública - Login */}
+        {/* Ruta pública */}
         <Route path="/login" element={<Login />} />
 
-        {/* Ruta catch-all global → redirige al login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Caja Simple — pantalla completa sin sidebar ni navbar */}
+        <Route
+          path="/caja-simple"
+          element={
+            <ProtectedRoute roles={ROLES_CAJA_SIMPLE} redirectTo="/dashboard">
+              <CajaSimple />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Rutas protegidas */}
+        {/* Rutas protegidas con MainLayout — cajero_simple es redirigido a /caja-simple */}
         <Route
           path="/"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute excludeRoles={ROLES_EXCLUIDOS_MAIN} redirectTo="/caja-simple">
               <MainLayout />
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          {/* Sprint 2 - Categorías y Productos */}
           <Route path="categorias" element={<Categorias />} />
           <Route path="productos" element={<Productos />} />
-          
-          {/* Sprint 3 - Inventario */}
           <Route path="inventario" element={<Inventario />} />
-
-          {/* Sprint 4 - Escaneo de Códigos de Barras */}
           <Route path="escaneo" element={<VerificacionProductos />} />
-
-           {/* Sprint 5 - Proveedores y Compras */}
           <Route path="proveedores" element={<Proveedores />} />
           <Route path="compras" element={<Compras />} />
-
-          {/* Sprint 6 - POS */}
           <Route path="pos" element={<POS />} />
-          
-          {/* Sprint 5 - Empleados */}
           <Route path="empleados" element={<Empleados />} />
           <Route path="caja" element={<Caja />} />
           <Route path="creditos" element={<Creditos />} />
           <Route path="gastos"    element={<Gastos />} />
           <Route path="alertas"   element={<Alertas />} />
           <Route path="auditoria" element={<Auditoria />} />
-          <Route path="reportes" element={<Reportes />} />          
+          <Route path="reportes" element={<Reportes />} />
           <Route path="*" element={<NotFound />} />
         </Route>
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );
