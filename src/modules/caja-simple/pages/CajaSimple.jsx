@@ -7,7 +7,7 @@ import ventaService from '../../ventas/services/venta.service';
 import cajaService from '../../caja/services/caja.service';
 
 // ─── Pantalla de caja cerrada / abrir turno ──────────────────────────────────
-const PantallaSinTurno = ({ onLogout, onAbrioTurno }) => {
+const PantallaSinTurno = ({ onLogout, onAbrioTurno, onRegresar }) => {
   const [monto, setMonto] = useState('0');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,8 +33,16 @@ const PantallaSinTurno = ({ onLogout, onAbrioTurno }) => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header igual al POS */}
-      <header className="bg-indigo-700 text-white px-6 py-3 flex items-center shrink-0">
+      <header className="bg-indigo-700 text-white px-6 py-3 flex items-center justify-between shrink-0">
         <span className="text-xl font-black tracking-tight">🏪 SuperMapache</span>
+        {onRegresar && (
+          <button
+            onClick={onRegresar}
+            className="px-5 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-xl text-sm font-bold transition-colors"
+          >
+            ← Regresar
+          </button>
+        )}
       </header>
 
       {/* Contenido centrado */}
@@ -317,6 +325,10 @@ const CajaSimple = () => {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
+  // cajero_simple no tiene menú principal al que volver — solo puede salir
+  const puedeRegresar = user?.rol !== 'cajero_simple';
+  const handleRegresar = () => navigate('/dashboard');
+
   // ─── Renders condicionales ──────────────────────────────────────────────
   if (loadingTurno) {
     return (
@@ -331,6 +343,7 @@ const CajaSimple = () => {
       <PantallaSinTurno
         onLogout={handleLogout}
         onAbrioTurno={t => { setTurno(t); setSinTurno(false); }}
+        onRegresar={puedeRegresar ? handleRegresar : undefined}
       />
     );
   }
@@ -358,12 +371,22 @@ const CajaSimple = () => {
             Turno #{turno.id} · {user?.nombre}
           </span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-5 py-2 bg-indigo-900 hover:bg-red-600 rounded-xl text-sm font-bold transition-colors"
-        >
-          Salir
-        </button>
+        <div className="flex items-center gap-2">
+          {puedeRegresar && (
+            <button
+              onClick={handleRegresar}
+              className="px-5 py-2 bg-indigo-900 hover:bg-indigo-800 rounded-xl text-sm font-bold transition-colors"
+            >
+              ← Regresar
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-5 py-2 bg-indigo-900 hover:bg-red-600 rounded-xl text-sm font-bold transition-colors"
+          >
+            Salir
+          </button>
+        </div>
       </header>
 
       {/* Campo de escaneo */}
