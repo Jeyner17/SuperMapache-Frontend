@@ -37,7 +37,7 @@ class AuthService {
    * Cambiar contraseña
    */
   static async changePassword(data) {
-    const response = await api.put('/auth/change-password', data);
+    const response = await api.post('/auth/change-password', data);
     return response;
   }
 }

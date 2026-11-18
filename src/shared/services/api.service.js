@@ -39,7 +39,11 @@ api.interceptors.response.use(
       // El servidor respondió con un código de error
       const { status, data } = error.response;
 
-      if (status === 401) {
+      // En /auth/login un 401 significa credenciales inválidas: se devuelve el
+      // error para que el formulario lo muestre, sin redirigir.
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+
+      if (status === 401 && !isLoginRequest) {
         // Token expirado o inválido
         StorageService.clearAuth();
         window.location.href = '/login';
