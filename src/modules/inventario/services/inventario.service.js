@@ -1,4 +1,5 @@
 import api from '../../../shared/services/api.service';
+import { normalizarLote } from '../utils/lotes';
 
 class InventarioService {
   /**
@@ -27,7 +28,15 @@ class InventarioService {
       params.append('solo_disponibles', 'true');
     }
 
-    return await api.get(`/inventario/lotes?${params.toString()}`);
+    if (filters.page) params.append('page', filters.page);
+    if (filters.limit) params.append('limit', filters.limit);
+
+    const response = await api.get(`/inventario/lotes?${params.toString()}`);
+    const pagina = response?.data;
+    if (pagina && Array.isArray(pagina.data)) {
+      return { ...response, data: { ...pagina, data: pagina.data.map(normalizarLote) } };
+    }
+    return response;
   }
 
   /**
@@ -58,7 +67,8 @@ class InventarioService {
    * Obtener lote por ID
    */
   async getLoteById(id) {
-    return await api.get(`/inventario/lotes/${id}`);
+    const response = await api.get(`/inventario/lotes/${id}`);
+    return { ...response, data: normalizarLote(response?.data) };
   }
 
   /**
@@ -79,7 +89,8 @@ class InventarioService {
    * Ajustar stock de un lote
    */
   async ajustarStock(loteId, data) {
-    return await api.put(`/inventario/lotes/${loteId}/ajustar`, data);
+    // El backend solo expone PATCH (antes se llamaba con PUT → 404)
+    return await api.patch(`/inventario/lotes/${loteId}/ajustar`, data);
   }
 
   /**
@@ -110,7 +121,17 @@ class InventarioService {
    * Obtener alertas
    */
   async getAlertas() {
-    return await api.get('/inventario/alertas');
+    const response = await api.get('/inventario/alertas');
+    const a = response?.data;
+    if (!a) return response;
+    return {
+      ...response,
+      data: {
+        ...a,
+        por_vencer: (a.por_vencer || []).map(normalizarLote),
+        vencidos: (a.vencidos || []).map(normalizarLote),
+      },
+    };
   }
 
   /**

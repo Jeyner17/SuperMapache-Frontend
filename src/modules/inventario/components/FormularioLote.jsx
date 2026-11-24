@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNotification } from '../../../shared/hooks/useNotification';
 import productoService from '../../productos/services/producto.service';
 import Input from '../../../shared/components/UI/Input';
 import Button from '../../../shared/components/UI/Button';
 import { Search } from 'lucide-react';
+import { hoyISO } from '../utils/lotes';
 
 const FormularioLote = ({ onSubmit, onCancel }) => {
-  const { showError } = useNotification();
   const [formData, setFormData] = useState({
     producto_id: '',
     cantidad_inicial: '',
-    fecha_ingreso: new Date().toISOString().split('T')[0],
+    fecha_ingreso: hoyISO(),
     fecha_caducidad: '',
     ubicacion: '',
     notas: '',
@@ -97,14 +96,17 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
       newErrors.fecha_caducidad = 'Este producto requiere fecha de caducidad';
     }
 
-    if (formData.fecha_caducidad) {
-      const fechaCad = new Date(formData.fecha_caducidad);
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      
-      if (fechaCad <= hoy) {
-        newErrors.fecha_caducidad = 'La fecha de caducidad debe ser futura';
-      }
+    // Comparación de strings 'YYYY-MM-DD': evita el desfase de zona horaria
+    if (formData.fecha_caducidad && formData.fecha_caducidad <= hoyISO()) {
+      newErrors.fecha_caducidad = 'La fecha de caducidad debe ser futura';
+    }
+
+    if (!formData.fecha_ingreso) {
+      newErrors.fecha_ingreso = 'La fecha de ingreso es requerida';
+    } else if (formData.fecha_ingreso > hoyISO()) {
+      newErrors.fecha_ingreso = 'La fecha de ingreso no puede ser futura';
+    } else if (formData.fecha_caducidad && formData.fecha_caducidad <= formData.fecha_ingreso) {
+      newErrors.fecha_caducidad = 'La caducidad debe ser posterior a la fecha de ingreso';
     }
 
     setErrors(newErrors);
@@ -123,6 +125,8 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
       const dataToSend = {
         productoId: Number(formData.producto_id),
         cantidad: parseFloat(formData.cantidad_inicial),
+        fechaIngreso: formData.fecha_ingreso,
+        motivo: formData.motivo,
         ...(formData.fecha_caducidad && { fechaCaducidad: formData.fecha_caducidad }),
         ...(formData.ubicacion && { ubicacion: formData.ubicacion }),
         ...(formData.notas && { notas: formData.notas }),
@@ -164,6 +168,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
                 onClick={() => {
                   setProductoSeleccionado(null);
                   setFormData(prev => ({ ...prev, producto_id: '' }));
+                  setErrors(prev => ({ ...prev, fecha_caducidad: '' }));
                 }}
                 className="text-sm text-blue-600 hover:text-blue-700"
               >
@@ -256,6 +261,8 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           type="date"
           value={formData.fecha_ingreso}
           onChange={handleChange}
+          error={errors.fecha_ingreso}
+          max={hoyISO()}
           required
         />
 
@@ -275,7 +282,7 @@ const FormularioLote = ({ onSubmit, onCancel }) => {
           onChange={handleChange}
           error={errors.fecha_caducidad}
           required={!!productoSeleccionado?.requiereCaducidad}
-          min={new Date().toISOString().split('T')[0]}
+          min={hoyISO()}
         />
       </div>
 

@@ -5,6 +5,7 @@ import Badge from '../../../shared/components/UI/Badge';
 import Loading from '../../../shared/components/UI/Loading';
 import { formatDate, formatDateTime } from '../../../shared/utils/formatters';
 import { Package, Calendar, MapPin, FileText, History, TrendingUp, TrendingDown } from 'lucide-react';
+import { diasHasta, estadoEfectivoLote } from '../utils/lotes';
 
 const DetallesLote = ({ lote: loteInicial, onClose }) => {
   const [lote, setLote] = useState(loteInicial);
@@ -30,11 +31,20 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
     return <Loading message="Cargando detalles..." />;
   }
 
-  const diasParaVencer = lote.fecha_caducidad 
-    ? Math.ceil((new Date(lote.fecha_caducidad) - new Date()) / (1000 * 60 * 60 * 24))
-    : null;
+  const diasParaVencer = diasHasta(lote.fecha_caducidad);
+  const estado = estadoEfectivoLote(lote);
 
-  const porcentajeUsado = ((lote.cantidad_inicial - lote.cantidad_actual) / lote.cantidad_inicial * 100).toFixed(1);
+  // Puede ser > 100 % o negativo si hubo ajustes; la barra se acota a 0–100
+  const inicial = Number(lote.cantidad_inicial);
+  const porcentajeUsado = inicial > 0
+    ? Math.min(100, Math.max(0, (inicial - Number(lote.cantidad_actual)) / inicial * 100)).toFixed(1)
+    : '0.0';
+
+  const textoVencimiento = (dias) => {
+    if (dias === 0) return 'Vence hoy';
+    if (dias < 0) return `Venció hace ${Math.abs(dias)} día${dias === -1 ? '' : 's'}`;
+    return `Vence en ${dias} día${dias === 1 ? '' : 's'}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -42,7 +52,7 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
       <div className="flex items-start justify-between pb-4 border-b border-gray-200 dark:border-dark-border">
         <div className="flex-1">
           <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-1">
-            {lote.producto.nombre}
+            {lote.producto?.nombre}
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
             Lote: {lote.numero_lote}
@@ -50,13 +60,13 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
         </div>
         <div>
           <Badge variant={
-            lote.estado === 'disponible' ? 'success' :
-            lote.estado === 'por_vencer' ? 'warning' :
-            lote.estado === 'vencido' ? 'danger' : 'default'
+            estado === 'disponible' ? 'success' :
+            estado === 'por_vencer' ? 'warning' :
+            estado === 'vencido' ? 'danger' : 'default'
           }>
-            {lote.estado === 'disponible' ? 'Disponible' :
-             lote.estado === 'por_vencer' ? 'Por Vencer' :
-             lote.estado === 'vencido' ? 'Vencido' :
+            {estado === 'disponible' ? 'Disponible' :
+             estado === 'por_vencer' ? 'Por Vencer' :
+             estado === 'vencido' ? 'Vencido' :
              'Agotado'}
           </Badge>
         </div>
@@ -76,7 +86,7 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
                 {lote.cantidad_actual}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                de {lote.cantidad_inicial} {lote.producto.unidad_medida}
+                de {lote.cantidad_inicial} {lote.producto?.unidad_medida}
               </p>
             </div>
             <div className="text-right">
@@ -111,31 +121,28 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
         {/* Fecha de Caducidad */}
         {lote.fecha_caducidad && (
           <div className={`p-4 rounded-lg ${
-            lote.estado === 'vencido' ? 'bg-red-50 dark:bg-red-900/20' :
-            lote.estado === 'por_vencer' ? 'bg-orange-50 dark:bg-orange-900/20' :
+            estado === 'vencido' ? 'bg-red-50 dark:bg-red-900/20' :
+            estado === 'por_vencer' ? 'bg-orange-50 dark:bg-orange-900/20' :
             'bg-gray-50 dark:bg-dark-hover'
           }`}>
             <div className="flex items-center gap-2 mb-2">
               <Calendar size={18} className={
-                lote.estado === 'vencido' ? 'text-red-600' :
-                lote.estado === 'por_vencer' ? 'text-orange-600' :
+                estado === 'vencido' ? 'text-red-600' :
+                estado === 'por_vencer' ? 'text-orange-600' :
                 'text-gray-600 dark:text-gray-400'
               } />
               <span className="text-sm text-gray-600 dark:text-gray-400">Caducidad</span>
             </div>
             <p className={`text-lg font-semibold ${
-              lote.estado === 'vencido' ? 'text-red-600' :
-              lote.estado === 'por_vencer' ? 'text-orange-600' :
+              estado === 'vencido' ? 'text-red-600' :
+              estado === 'por_vencer' ? 'text-orange-600' :
               'text-gray-800 dark:text-white'
             }`}>
               {formatDate(lote.fecha_caducidad)}
             </p>
             {diasParaVencer !== null && (
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {lote.estado === 'vencido' 
-                  ? `Venció hace ${Math.abs(diasParaVencer)} días`
-                  : `Vence en ${diasParaVencer} días`
-                }
+                {textoVencimiento(diasParaVencer)}
               </p>
             )}
           </div>
@@ -179,21 +186,22 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
           </div>
           
           <div className="space-y-3">
-            {lote.movimientos.map((movimiento) => (
+            {lote.movimientos.map((movimiento) => {
+              const sube = Number(movimiento.cantidad_nueva) >= Number(movimiento.cantidad_anterior);
+              return (
               <div
                 key={movimiento.id}
                 className="p-3 bg-gray-50 dark:bg-dark-hover rounded-lg border-l-4"
                 style={{
-                  borderColor: 
-                    movimiento.tipo_movimiento === 'entrada' ? '#10b981' :
-                    movimiento.tipo_movimiento === 'salida' ? '#ef4444' :
-                    '#f59e0b'
+                  borderColor:
+                    movimiento.tipo_movimiento === 'ajuste' ? '#f59e0b' :
+                    sube ? '#10b981' : '#ef4444'
                 }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      {movimiento.tipo_movimiento === 'entrada' ? (
+                      {sube ? (
                         <TrendingUp size={16} className="text-green-600" />
                       ) : (
                         <TrendingDown size={16} className="text-red-600" />
@@ -201,12 +209,8 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
                       <span className="font-medium text-gray-800 dark:text-white capitalize">
                         {movimiento.tipo_movimiento}
                       </span>
-                      <span className={`text-sm font-bold ${
-                        movimiento.tipo_movimiento === 'entrada' ? 'text-green-600' :
-                        movimiento.tipo_movimiento === 'salida' ? 'text-red-600' :
-                        'text-orange-600'
-                      }`}>
-                        {movimiento.tipo_movimiento === 'entrada' ? '+' : '-'}
+                      <span className={`text-sm font-bold ${sube ? 'text-green-600' : 'text-red-600'}`}>
+                        {sube ? '+' : '-'}
                         {movimiento.cantidad}
                       </span>
                     </div>
@@ -225,7 +229,8 @@ const DetallesLote = ({ lote: loteInicial, onClose }) => {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

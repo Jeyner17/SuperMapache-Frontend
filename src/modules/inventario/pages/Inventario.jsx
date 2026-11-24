@@ -27,16 +27,9 @@ import FormularioLote from '../components/FormularioLote';
 import FormularioAjuste from '../components/FormularioAjuste';
 import DetallesLote from '../components/DetallesLote';
 import { formatCurrency, formatDate } from '../../../shared/utils/formatters';
+import { diasHasta, estadoEfectivoLote } from '../utils/lotes';
 
-const computarEstadoLote = (lote) => {
-  if (!lote.fecha_caducidad || lote.estado === 'agotado') return lote.estado;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const fechaCad = new Date(lote.fecha_caducidad);
-  fechaCad.setHours(0, 0, 0, 0);
-  if (fechaCad <= hoy) return 'vencido';
-  return lote.estado;
-};
+const LOTES_POR_PAGINA = 30;
 
 const Inventario = () => {
     const { showSuccess, showError } = useNotification();
@@ -49,12 +42,15 @@ const Inventario = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const searchTimer = useRef(null);
+    const ultimaPeticion = useRef(0);
     const [filtroCategoria, setFiltroCategoria] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState(''); // 'crear' | 'ajustar' | 'detalle'
     const [selectedLote, setSelectedLote] = useState(null);
     const [alertas, setAlertas] = useState(null);
+    const [paginaLotes, setPaginaLotes] = useState(1);
+    const [infoLotes, setInfoLotes] = useState({ total: 0, totalPages: 1 });
 
     useEffect(() => {
         cargarCategorias();
@@ -66,9 +62,14 @@ const Inventario = () => {
         return () => clearTimeout(searchTimer.current);
     }, [searchTerm]);
 
+    // Al cambiar filtros se vuelve a la primera página de lotes
+    useEffect(() => {
+        setPaginaLotes(1);
+    }, [vista, filtroCategoria, debouncedSearch, filtroEstado]);
+
     useEffect(() => {
         cargarDatos();
-    }, [vista, filtroCategoria, debouncedSearch, filtroEstado]);
+    }, [vista, filtroCategoria, debouncedSearch, filtroEstado, paginaLotes]);
 
     const cargarCategorias = async () => {
         try {
@@ -80,6 +81,9 @@ const Inventario = () => {
     };
 
     const cargarDatos = async () => {
+        // Descarta respuestas de peticiones anteriores que lleguen tarde
+        const peticion = ++ultimaPeticion.current;
+        const vigente = () => peticion === ultimaPeticion.current;
         try {
             setLoading(true);
 
@@ -88,23 +92,35 @@ const Inventario = () => {
                     categoria_id: filtroCategoria,
                     search: debouncedSearch
                 });
+                if (!vigente()) return;
                 setResumen(Array.isArray(response.data) ? response.data : []);
             } else if (vista === 'lotes') {
                 const response = await inventarioService.getLotes({
                     categoria_id: filtroCategoria,
                     search: debouncedSearch,
-                    estado: filtroEstado
+                    estado: filtroEstado,
+                    page: paginaLotes,
+                    limit: LOTES_POR_PAGINA
                 });
-                setLotes(Array.isArray(response.data) ? response.data : (response.data?.data || []));
+                if (!vigente()) return;
+                // Antes solo se veían los primeros 20 lotes (paginación del backend sin controles)
+                setLotes(response.data?.data || []);
+                setInfoLotes({
+                    total: response.data?.total ?? 0,
+                    totalPages: Math.max(1, response.data?.totalPages ?? 1)
+                });
             } else if (vista === 'alertas') {
                 const response = await inventarioService.getAlertas();
+                if (!vigente()) return;
                 setAlertas(response.data);
             }
         } catch (error) {
-            showError(error.message || 'Error al cargar datos');
+            if (vigente()) showError(error.message || 'Error al cargar datos');
         } finally {
-            setLoading(false);
-            setInitialLoading(false);
+            if (vigente()) {
+                setLoading(false);
+                setInitialLoading(false);
+            }
         }
     };
 
@@ -154,7 +170,7 @@ const Inventario = () => {
             showSuccess('Estados de lotes verificados correctamente');
             cargarDatos();
         } catch (error) {
-            showError('Error al verificar estados');
+            showError(error.message || 'Error al verificar estados');
         }
     };
 
@@ -336,7 +352,6 @@ const Inventario = () => {
                 <VistaResumen
                     resumen={resumen}
                     loading={loading}
-                    onAjustar={handleAjustarStock}
                 />
             )}
 
@@ -346,6 +361,10 @@ const Inventario = () => {
                     loading={loading}
                     onVerDetalle={handleVerDetalle}
                     onAjustar={handleAjustarStock}
+                    pagina={paginaLotes}
+                    totalPaginas={infoLotes.totalPages}
+                    total={infoLotes.total}
+                    onCambiarPagina={setPaginaLotes}
                 />
             )}
 
@@ -393,7 +412,7 @@ const Inventario = () => {
 };
 
 // Vista Resumen por Producto
-const VistaResumen = ({ resumen, loading, onAjustar }) => {
+const VistaResumen = ({ resumen, loading }) => {
     if (loading) {
         return (
             <div className="flex justify-center py-12">
@@ -497,7 +516,7 @@ const VistaResumen = ({ resumen, loading, onAjustar }) => {
 };
 
 // Vista Lotes Detallados
-const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar }) => {
+const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar, pagina, totalPaginas, total, onCambiarPagina }) => {
     if (loading) {
         return (
             <div className="flex justify-center py-12">
@@ -518,15 +537,16 @@ const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar }) => {
     }
 
     return (
+        <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lotes.map((lote) => {
-                const estadoEfectivo = computarEstadoLote(lote);
+                const estadoEfectivo = estadoEfectivoLote(lote);
                 return (
                     <Card key={lote.id} className="p-6 hover:shadow-lg transition-all">
                         <div className="flex items-start justify-between mb-4">
                             <div>
                                 <h3 className="font-semibold text-gray-800 dark:text-white">
-                                    {lote.producto.nombre}
+                                    {lote.producto?.nombre}
                                 </h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">
                                     Lote: {lote.numero_lote}
@@ -539,7 +559,7 @@ const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar }) => {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Stock Actual:</span>
                                 <span className="font-bold text-gray-900 dark:text-white">
-                                    {lote.cantidad_actual} {lote.producto.unidad_medida}
+                                    {lote.cantidad_actual} {lote.producto?.unidad_medida}
                                 </span>
                             </div>
 
@@ -592,6 +612,32 @@ const VistaLotes = ({ lotes, loading, onVerDetalle, onAjustar }) => {
                     </Card>
                 );
             })}
+        </div>
+        {totalPaginas > 1 && (
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {total} lotes · Página {pagina} de {totalPaginas}
+                </p>
+                <div className="flex gap-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={pagina <= 1}
+                        onClick={() => onCambiarPagina(pagina - 1)}
+                    >
+                        Anterior
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={pagina >= totalPaginas}
+                        onClick={() => onCambiarPagina(pagina + 1)}
+                    >
+                        Siguiente
+                    </Button>
+                </div>
+            </div>
+        )}
         </div>
     );
 };
@@ -737,15 +783,13 @@ const VistaAlertas = ({ alertas, loading, onVerDetalle }) => {
 
 // Componente AlertaItem
 const AlertaItem = ({ lote, tipo, onVerDetalle }) => {
-    const diasParaVencer = lote.fecha_caducidad
-        ? Math.ceil((new Date(lote.fecha_caducidad) - new Date()) / (1000 * 60 * 60 * 24))
-        : null;
+    const diasParaVencer = diasHasta(lote.fecha_caducidad);
 
     return (
         <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-hover rounded-lg">
             <div className="flex-1">
                 <p className="font-medium text-gray-800 dark:text-white">
-                    {lote.producto.nombre}
+                    {lote.producto?.nombre}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                     Lote: {lote.numero_lote} • Stock: {lote.cantidad_actual}
@@ -755,7 +799,9 @@ const AlertaItem = ({ lote, tipo, onVerDetalle }) => {
                         }`}>
                         {tipo === 'vencido'
                             ? `Venció el ${formatDate(lote.fecha_caducidad)}`
-                            : `Vence en ${diasParaVencer} días (${formatDate(lote.fecha_caducidad)})`
+                            : diasParaVencer === 0
+                                ? `Vence hoy (${formatDate(lote.fecha_caducidad)})`
+                                : `Vence en ${diasParaVencer} día${diasParaVencer === 1 ? '' : 's'} (${formatDate(lote.fecha_caducidad)})`
                         }
                     </p>
                 )}

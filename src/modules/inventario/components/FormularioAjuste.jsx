@@ -3,9 +3,12 @@ import Input from '../../../shared/components/UI/Input';
 import Button from '../../../shared/components/UI/Button';
 import Badge from '../../../shared/components/UI/Badge';
 
+// Motivos que, cuando reducen stock, se registran como merma (pérdida) y no como ajuste
+const MOTIVOS_MERMA = ['Merma', 'Producto dañado'];
+
 const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    nueva_cantidad: lote?.cantidad_actual || '',
+    nueva_cantidad: lote?.cantidad_actual ?? '',
     motivo: '',
     notas: ''
   });
@@ -27,8 +30,11 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.nueva_cantidad || parseFloat(formData.nueva_cantidad) < 0) {
+    const nueva = parseFloat(formData.nueva_cantidad);
+    if (formData.nueva_cantidad === '' || Number.isNaN(nueva) || nueva < 0) {
       newErrors.nueva_cantidad = 'La cantidad debe ser mayor o igual a 0';
+    } else if (nueva === Number(lote.cantidad_actual)) {
+      newErrors.nueva_cantidad = 'La nueva cantidad es igual al stock actual';
     }
 
     if (!formData.motivo.trim()) {
@@ -48,10 +54,16 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
 
     setLoading(true);
     try {
+      const nueva = parseFloat(formData.nueva_cantidad);
+      const esMerma = nueva < Number(lote.cantidad_actual) && MOTIVOS_MERMA.includes(formData.motivo);
+
+      // Contrato del backend (AjustarLoteDto): 'ajuste' recibe la cantidad final;
+      // 'merma' recibe cuánto se resta.
       const dataToSend = {
-        nueva_cantidad: parseFloat(formData.nueva_cantidad),
+        tipoMovimiento: esMerma ? 'merma' : 'ajuste',
+        cantidad: esMerma ? Math.round((Number(lote.cantidad_actual) - nueva) * 100) / 100 : nueva,
         motivo: formData.motivo,
-        notas: formData.notas
+        ...(formData.notas.trim() && { notas: formData.notas.trim() }),
       };
 
       await onSubmit(dataToSend);
@@ -60,7 +72,9 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
     }
   };
 
-  const diferencia = parseFloat(formData.nueva_cantidad || 0) - parseFloat(lote.cantidad_actual);
+  const diferencia = formData.nueva_cantidad === ''
+    ? 0
+    : parseFloat(formData.nueva_cantidad) - parseFloat(lote.cantidad_actual);
   const tipoAjuste = diferencia > 0 ? 'entrada' : diferencia < 0 ? 'salida' : 'sin_cambio';
 
   return (
@@ -74,7 +88,7 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
           <div className="flex justify-between">
             <span className="text-gray-600 dark:text-gray-400">Producto:</span>
             <span className="font-medium text-gray-900 dark:text-white">
-              {lote.producto.nombre}
+              {lote.producto?.nombre}
             </span>
           </div>
           <div className="flex justify-between">
@@ -86,7 +100,7 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
           <div className="flex justify-between">
             <span className="text-gray-600 dark:text-gray-400">Stock Actual:</span>
             <span className="text-lg font-bold text-primary-600">
-              {lote.cantidad_actual} {lote.producto.unidad_medida}
+              {lote.cantidad_actual} {lote.producto?.unidad_medida}
             </span>
           </div>
         </div>
@@ -107,7 +121,7 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
       />
 
       {/* Mostrar diferencia */}
-      {diferencia !== 0 && formData.nueva_cantidad && (
+      {diferencia !== 0 && !Number.isNaN(diferencia) && (
         <div className={`p-4 rounded-lg border-l-4 ${
           tipoAjuste === 'entrada' 
             ? 'bg-green-50 dark:bg-green-900/20 border-green-500' 
@@ -118,7 +132,7 @@ const FormularioAjuste = ({ lote, onSubmit, onCancel }) => {
               Ajuste:
             </span>
             <Badge variant={tipoAjuste === 'entrada' ? 'success' : 'danger'}>
-              {tipoAjuste === 'entrada' ? '+' : ''}{Math.abs(diferencia).toFixed(2)} {lote.producto.unidad_medida}
+              {tipoAjuste === 'entrada' ? '+' : '-'}{Math.abs(diferencia).toFixed(2)} {lote.producto?.unidad_medida}
             </Badge>
           </div>
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
