@@ -4,10 +4,16 @@ import Button from '../../../shared/components/UI/Button';
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!';
 
-const generarPassword = () => {
+// crypto.getRandomValues en lugar de Math.random (que no es seguro para contraseñas).
+// Se descartan valores >= 256 - (256 % n) para que todos los caracteres sean equiprobables.
+const generarPassword = (largo = 12) => {
+  const limite = 256 - (256 % CHARS.length);
   let pwd = '';
-  for (let i = 0; i < 10; i++) {
-    pwd += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
+  while (pwd.length < largo) {
+    const bytes = crypto.getRandomValues(new Uint8Array(largo * 2));
+    for (const b of bytes) {
+      if (b < limite && pwd.length < largo) pwd += CHARS[b % CHARS.length];
+    }
   }
   return pwd;
 };
@@ -57,7 +63,8 @@ const ModalResetPassword = ({ empleado, onConfirm, onCancel }) => {
     }
   };
 
-  const nombre = empleado?.usuario?.nombre || 'Empleado';
+  const nombre = [empleado?.nombres, empleado?.apellidos].filter(Boolean).join(' ')
+    || empleado?.usuario?.nombre || 'Empleado';
   const username = empleado?.usuario?.username || '';
 
   return (

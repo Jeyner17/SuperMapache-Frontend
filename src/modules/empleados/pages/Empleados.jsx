@@ -50,18 +50,25 @@ const CONTRATO_LABEL = {
 };
 
 const initials = (nombre = '') =>
-  nombre.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  nombre.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
+// Antes se usaba usuario.nombre: los empleados sin cuenta aparecían sin nombre
+const nombreEmpleado = (e) =>
+  [e?.nombres, e?.apellidos].filter(Boolean).join(' ') || e?.usuario?.nombre || 'Empleado';
+
+// Fechas DATE: se interpreta solo el día para no correrlo por zona horaria
 const formatDate = (d) => {
   if (!d) return null;
-  const dt = new Date(d);
-  return dt.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
+  const [a, m, dia] = String(d).split('T')[0].split('-').map(Number);
+  if (!a || !m || !dia) return null;
+  return new Date(a, m - 1, dia).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
 // ── Tarjeta de empleado ───────────────────────────────────────────────────────
 
-const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onActivar, onDelete }) => {
+const EmpleadoCard = ({ empleado, isAdmin, canManage, onEdit, onReset, onActivar, onDelete }) => {
   const { usuario, cargo, departamento } = empleado;
+  const nombre = nombreEmpleado(empleado);
   const avatarBg = AVATAR_BG[departamento] || 'bg-gray-400';
   const rolNombre = usuario?.rol?.nombre || '';
 
@@ -75,10 +82,10 @@ const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onActivar, onDelete 
         {/* Cabecera: avatar + nombre + estado */}
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}>
-            {initials(usuario?.nombre)}
+            {initials(nombre)}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 dark:text-white truncate leading-tight">{usuario?.nombre}</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white truncate leading-tight">{nombre}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{cargo}</p>
           </div>
           <Badge variant={empleado.activo ? 'success' : 'danger'} size="sm">
@@ -143,16 +150,18 @@ const EmpleadoCard = ({ empleado, isAdmin, onEdit, onReset, onActivar, onDelete 
 
         {/* Acciones */}
         <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-dark-border">
+          {canManage && (
           <button
             onClick={() => onEdit(empleado)}
             className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-dark-hover dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm flex items-center justify-center gap-1.5 transition-colors"
           >
             <Edit size={14} /> Editar
           </button>
+          )}
 
           {isAdmin && (
             <>
-              {empleado.activo && (
+              {empleado.activo && usuario && (
                 <button
                   onClick={() => onReset(empleado)}
                   title="Resetear contraseña"
@@ -253,8 +262,9 @@ const Empleados = () => {
 
   const handleActivar = async (empleado) => {
     try {
-      await empleadoService.update(empleado.id, { activo: true });
-      showSuccess(`${empleado.usuario?.nombre} reactivado exitosamente`);
+      // Antes enviaba { activo: true } a update: el backend lo descartaba y no reactivaba nada
+      await empleadoService.activar(empleado.id);
+      showSuccess(`${nombreEmpleado(empleado)} reactivado exitosamente`);
       cargar();
     } catch (err) {
       showError(err.message || 'Error al activar empleado');
@@ -264,7 +274,7 @@ const Empleados = () => {
   const handleResetConfirm = async (password) => {
     try {
       await empleadoService.cambiarPassword(resetModal.empleado.id, password);
-      showSuccess(`Contraseña de ${resetModal.empleado.usuario?.nombre} actualizada`);
+      showSuccess(`Contraseña de ${nombreEmpleado(resetModal.empleado)} actualizada`);
       setResetModal({ open: false, empleado: null });
     } catch (err) {
       showError(err.message || 'Error al resetear contraseña');
@@ -344,7 +354,7 @@ const Empleados = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Buscar por nombre, email o username..."
+              placeholder="Buscar por nombre, cédula, cargo, email o username..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
@@ -405,6 +415,7 @@ const Empleados = () => {
               key={emp.id}
               empleado={emp}
               isAdmin={isAdmin}
+              canManage={canManage}
               onEdit={e => setFormModal({ open: true, mode: 'edit', data: e })}
               onReset={e => setResetModal({ open: true, empleado: e })}
               onActivar={handleActivar}
@@ -426,6 +437,7 @@ const Empleados = () => {
           initialData={formModal.data}
           onSubmit={handleFormSubmit}
           onCancel={() => setFormModal({ open: false, mode: 'create', data: null })}
+          isAdmin={isAdmin}
         />
       </Modal>
 
@@ -462,11 +474,11 @@ const Empleados = () => {
           {deleteModal.empleado && (
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg mb-4 mt-1 bg-gray-100 dark:bg-gray-800">
               <div className="w-8 h-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-sm font-bold">
-                {initials(deleteModal.empleado.usuario?.nombre)}
+                {initials(nombreEmpleado(deleteModal.empleado))}
               </div>
               <div className="text-left">
                 <p className="font-semibold text-gray-800 dark:text-white leading-tight">
-                  {deleteModal.empleado.usuario?.nombre}
+                  {nombreEmpleado(deleteModal.empleado)}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {deleteModal.empleado.cargo} · {DEPTO_LABEL[deleteModal.empleado.departamento]}
@@ -475,7 +487,9 @@ const Empleados = () => {
             </div>
           )}
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            El empleado perderá acceso al sistema. El registro se conserva (soft delete).
+            {deleteModal.empleado?.usuario
+              ? 'Su cuenta quedará desactivada y no podrá iniciar sesión. El registro se conserva.'
+              : 'El registro se conserva y puede reactivarse después.'}
           </p>
           <div className="flex gap-3 w-full">
             <button

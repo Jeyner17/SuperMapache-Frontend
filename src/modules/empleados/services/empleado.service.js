@@ -6,6 +6,8 @@ class EmpleadoService {
     if (filters.search)        params.append('search', filters.search);
     if (filters.departamento)  params.append('departamento', filters.departamento);
     if (filters.mostrarInactivos) params.append('estado', 'todos');
+    // Sin paginación en la UI: antes solo llegaban los primeros 20 (y las estadísticas salían mal)
+    params.append('limit', filters.limit || 500);
     return await api.get(`/empleados?${params.toString()}`);
   }
 
@@ -23,6 +25,10 @@ class EmpleadoService {
 
   async cambiarPassword(id, password) {
     return await api.put(`/empleados/${id}/cambiar-password`, { password });
+  }
+
+  async activar(id) {
+    return await api.put(`/empleados/${id}/activar`);
   }
 
   async delete(id) {

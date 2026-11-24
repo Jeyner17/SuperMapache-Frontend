@@ -93,7 +93,10 @@ const SectionTitle = ({ children }) => (
   </h3>
 );
 
-const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
+// Las fechas DATE llegan como 'YYYY-MM-DD' o ISO; se toma solo el día sin convertir de zona
+const soloFecha = (v) => (v ? String(v).split('T')[0] : '');
+
+const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel, isAdmin }) => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -114,20 +117,16 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
         email:                         initialData.usuario?.email || '',
         username:                      initialData.usuario?.username || '',
         password:                      '',
-        rol_id:                        initialData.usuario?.rolId || initialData.usuario?.rol?.id || '',
+        rol_id:                        String(initialData.usuario?.rolId || initialData.usuario?.rol?.id || ''),
         cargo:                         initialData.cargo || '',
         departamento:                  initialData.departamento || '',
-        fecha_contratacion:            initialData.fechaContratacion
-                                         ? new Date(initialData.fechaContratacion).toISOString().split('T')[0]
-                                         : '',
+        fecha_contratacion:            soloFecha(initialData.fechaContratacion),
         sueldo:                        initialData.sueldo || '',
         tipo_contrato:                 initialData.tipoContrato || 'indefinido',
         cedula:                        initialData.cedula || '',
         telefono:                      initialData.telefono || '',
         celular:                       initialData.celular || '',
-        fecha_nacimiento:              initialData.fechaNacimiento
-                                         ? new Date(initialData.fechaNacimiento).toISOString().split('T')[0]
-                                         : '',
+        fecha_nacimiento:              soloFecha(initialData.fechaNacimiento),
         estado_civil:                  initialData.estadoCivil || '',
         direccion:                     initialData.direccion || '',
         ciudad:                        initialData.ciudad || 'Quito',
@@ -149,6 +148,15 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  // Sin cuenta existente (alta, o empleado sin usuario) se puede crear una
+  const tieneCuenta  = mode === 'edit' && !!initialData?.usuario;
+  const pideCuenta   = !tieneCuenta;
+  const quiereCuenta = !!(formData.email || formData.username || formData.password || formData.rol_id);
+
+  // Un supervisor no puede asignar el rol de administrador (el backend también lo bloquea)
+  const rolesDisponibles = roles.filter(r => isAdmin || r.nombre !== 'administrador'
+    || String(r.id) === String(formData.rol_id));
+
   const validate = () => {
     const e = {};
     if (!formData.nombres.trim())      e.nombres  = 'Los nombres son requeridos';
@@ -159,7 +167,21 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
     if (!formData.cargo.trim())        e.cargo       = 'El cargo es requerido';
     if (!formData.departamento)        e.departamento = 'El departamento es requerido';
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Email inválido';
-    if (mode === 'create' && formData.password && formData.password.length < 6) e.password = 'Mínimo 6 caracteres';
+    if (formData.username && !/^[a-zA-Z0-9._-]{3,50}$/.test(formData.username)) {
+      e.username = '3 a 50 caracteres: letras, números, punto, guion o guion bajo';
+    }
+    // Cuenta de acceso: opcional, pero si se llena algo deben ir todos los campos
+    if (pideCuenta && quiereCuenta) {
+      if (!formData.email)    e.email    = 'Requerido para crear la cuenta';
+      if (!formData.username) e.username = 'Requerido para crear la cuenta';
+      if (!formData.rol_id)   e.rol_id   = 'Selecciona un rol';
+      if (!formData.password) e.password = 'Requerida para crear la cuenta';
+    }
+    if (formData.password && formData.password.length < 6) e.password = 'Mínimo 6 caracteres';
+    if (formData.fecha_nacimiento && formData.fecha_contratacion
+        && formData.fecha_nacimiento >= formData.fecha_contratacion) {
+      e.fecha_nacimiento = 'Debe ser anterior a la fecha de contratación';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -169,24 +191,34 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
     if (!validate()) return;
     setLoading(true);
     try {
+      // Campos opcionales vacíos van como null para poder borrarlos al editar
+      // (antes se omitían y el valor anterior nunca se podía quitar)
+      const opcional = (v) => (v === '' || v === undefined ? null : v);
       const data = {
-        nombres: formData.nombres,
-        apellidos: formData.apellidos,
+        nombres: formData.nombres.trim(),
+        apellidos: formData.apellidos.trim(),
         cedulaIdentidad: formData.cedula,
         fechaIngreso: formData.fecha_contratacion,
-        ...(formData.cargo && { cargo: formData.cargo }),
-        ...(formData.departamento && { departamento: formData.departamento }),
-        ...(formData.sueldo && { sueldo: Number(formData.sueldo) }),
-        ...(formData.tipo_contrato && { tipoContrato: formData.tipo_contrato }),
-        ...(formData.telefono && { telefono: formData.telefono }),
-        ...(formData.celular && { celular: formData.celular }),
-        ...(formData.fecha_nacimiento && { fechaNacimiento: formData.fecha_nacimiento }),
-        ...(formData.estado_civil && { estadoCivil: formData.estado_civil }),
-        ...(formData.direccion && { direccion: formData.direccion }),
-        ...(formData.ciudad && { ciudad: formData.ciudad }),
-        ...(formData.contacto_emergencia_nombre && { contactoEmergenciaNombre: formData.contacto_emergencia_nombre }),
-        ...(formData.contacto_emergencia_telefono && { contactoEmergenciaTelefono: formData.contacto_emergencia_telefono }),
-        ...(formData.notas && { notas: formData.notas }),
+        cargo: formData.cargo,
+        departamento: formData.departamento,
+        sueldo: formData.sueldo === '' ? null : Number(formData.sueldo),
+        tipoContrato: formData.tipo_contrato || 'indefinido',
+        telefono: opcional(formData.telefono),
+        celular: opcional(formData.celular),
+        fechaNacimiento: opcional(formData.fecha_nacimiento),
+        estadoCivil: opcional(formData.estado_civil),
+        direccion: opcional(formData.direccion),
+        ciudad: opcional(formData.ciudad),
+        contactoEmergenciaNombre: opcional(formData.contacto_emergencia_nombre),
+        contactoEmergenciaTelefono: opcional(formData.contacto_emergencia_telefono),
+        notas: opcional(formData.notas),
+        // Antes la cuenta de acceso nunca se enviaba al backend
+        ...((tieneCuenta || quiereCuenta) && {
+          ...(formData.email && { email: formData.email.trim() }),
+          ...(formData.username && { username: formData.username.trim() }),
+          ...(formData.rol_id && { rolId: Number(formData.rol_id) }),
+          ...(formData.password && { password: formData.password }),
+        }),
       };
       await onSubmit(data);
     } finally {
@@ -211,7 +243,7 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
 
       {/* ── Cuenta de acceso ── */}
       <div>
-        <SectionTitle>Cuenta de acceso (opcional)</SectionTitle>
+        <SectionTitle>{tieneCuenta ? 'Cuenta de acceso' : 'Cuenta de acceso (opcional)'}</SectionTitle>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label="Email" name="email" type="email" value={formData.email}
             onChange={handleChange} error={errors.email} placeholder="jmanzaba@supermapache.com" />
@@ -219,10 +251,10 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
           <Input label="Username" name="username" value={formData.username}
             onChange={handleChange} error={errors.username} placeholder="jmanzaba" />
 
-          {mode === 'create' && (
+          {pideCuenta && (
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Contraseña <span className="text-red-500">*</span>
+                Contraseña {quiereCuenta && <span className="text-red-500">*</span>}
               </label>
               <div className="relative">
                 <input
@@ -246,8 +278,8 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
 
           <SelectField
             label="Rol del sistema" name="rol_id" value={formData.rol_id}
-            onChange={handleChange} required error={errors.rol_id}
-            options={roles.map(r => ({ value: r.id, label: r.nombre.charAt(0).toUpperCase() + r.nombre.slice(1) }))}
+            onChange={handleChange} required={tieneCuenta || quiereCuenta} error={errors.rol_id}
+            options={rolesDisponibles.map(r => ({ value: String(r.id), label: r.nombre.charAt(0).toUpperCase() + r.nombre.slice(1) }))}
           />
         </div>
       </div>
@@ -291,7 +323,7 @@ const FormularioEmpleado = ({ mode, initialData, onSubmit, onCancel }) => {
             onChange={handleChange} placeholder="0998765432" />
 
           <Input label="Fecha de nacimiento" name="fecha_nacimiento" type="date"
-            value={formData.fecha_nacimiento} onChange={handleChange} />
+            value={formData.fecha_nacimiento} onChange={handleChange} error={errors.fecha_nacimiento} />
 
           <SelectField
             label="Estado civil" name="estado_civil" value={formData.estado_civil}
